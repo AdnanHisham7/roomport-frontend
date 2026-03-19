@@ -7,9 +7,9 @@ export class EmailService implements IEmailService {
 
   constructor() {
     this.transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST || 'smtp.gmail.com',
-      port: Number(process.env.SMTP_PORT) || 587,
-      secure: process.env.SMTP_SECURE === 'true',
+      host:   process.env.SMTP_HOST     || 'smtp.gmail.com',
+      port:   Number(process.env.SMTP_PORT) || 587,
+      secure: false,
       auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS,
@@ -21,7 +21,7 @@ export class EmailService implements IEmailService {
     const { subject, body } = this.buildEmailContent(otp, purpose);
 
     await this.transporter.sendMail({
-      from: `"${process.env.EMAIL_FROM_NAME || 'App'}" <${process.env.EMAIL_FROM || process.env.SMTP_USER}>`,
+      from:    `"${process.env.APP_NAME || 'App'}" <${process.env.SMTP_USER}>`,
       to,
       subject,
       html: body,

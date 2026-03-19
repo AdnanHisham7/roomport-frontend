@@ -5,21 +5,16 @@ import { AppError } from '../../shared/error/app-error';
 export class BootstrapController {
   constructor(private readonly bootstrapUseCase: IBootstrapUseCase) {}
 
-  /**
-   * POST /api/v1/system/bootstrap
-   * ⚠️  One-time only. Seed system roles + create super admin.
-   */
   bootstrap = async (req: Request, res: Response): Promise<Response> => {
     try {
-      const { email, password, firstName, lastName, phone } = req.body;
+      const { email, password, first_name, last_name, phone_number } = req.body;
 
-      if (!email || !password || !firstName || !lastName) {
+      if (!email || !password || !first_name || !last_name) {
         return res.status(400).json({
           message:    'Bootstrap failed: Missing required fields.',
-          suggestion: 'Please provide email, password, firstName, and lastName.',
+          suggestion: 'Please provide email, password, first_name, and last_name.',
         });
       }
-
       if (password.length < 8) {
         return res.status(400).json({
           message:    'Bootstrap failed: Password too short.',
@@ -28,9 +23,8 @@ export class BootstrapController {
       }
 
       const result = await this.bootstrapUseCase.bootstrap({
-        email, password, firstName, lastName, phone,
+        email, password, first_name, last_name, phone_number,
       });
-
       return res.status(201).json(result);
     } catch (error) {
       if (error instanceof AppError) {

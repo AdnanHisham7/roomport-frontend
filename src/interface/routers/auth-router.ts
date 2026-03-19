@@ -1,7 +1,6 @@
 import { Router } from 'express';
-import { authController } from '../../infrastructure/DIContainer';
+import { authController } from '../../infrastructure/DIContainer/index';
 import { authenticate } from '../middleware/auth-middleware';
-
 
 const router = Router();
 

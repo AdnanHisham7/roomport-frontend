@@ -1,15 +1,15 @@
-import bcrypt from "bcryptjs";
-import { IAuthUseCases } from "../../interface/common/auth-usecase.impl";
-import { IUserRepository } from "../../../domain/repository/user-repository-impl";
-import { IJwtService } from "../../interface/common/jwt-service-usecase.impl";
-import { IEmailService } from "../../interface/common/email-service-usecase.impl";
-import { ForgotPasswordRequestDTO, LoginRequestDTO, LoginResponseDTO, RefreshTokenRequestDTO, RefreshTokenResponseDTO, ResendOtpRequestDTO, ResetPasswordRequestDTO, SendOtpRequestDTO, ValidateOtpRequestDTO, VerifyEmailRequestDTO } from "../../dtos/user-usecaase/authdto";
-import { BadRequestError, ForbiddenError, NotFoundError, UnauthorizedError } from "../../../shared/error/app-error";
-import { OtpPurpose } from "../../../shared/enums/OtpPurpose.enum";
+import bcrypt from 'bcryptjs';
+import { IAuthUseCases } from '../../interface/common/auth-usecase.impl';
+import { IUserRepository } from '../../../domain/repository/user-repository-impl';
+import { IJwtService } from '../../interface/common/jwt-service-usecase.impl';
+import { IEmailService } from '../../interface/common/email-service-usecase.impl';
+import { IOtpService } from '../../interface/common/otp-servie-usecase.impl';
+import { ForgotPasswordRequestDTO, LoginRequestDTO, LoginResponseDTO, RefreshTokenRequestDTO, RefreshTokenResponseDTO, ResendOtpRequestDTO, ResetPasswordRequestDTO, SendOtpRequestDTO, ValidateOtpRequestDTO, VerifyEmailRequestDTO } from '../../dtos/user-usecaase/authdto';
+import { BadRequestError, ForbiddenError, NotFoundError, UnauthorizedError } from '../../../shared/error/app-error';
+import { OtpPurpose } from '../../../shared/enums/OtpPurpose.enum';
 
 
-const OTP_EXPIRY_MINUTES = 10;
-const SALT_ROUNDS        = 12;
+const SALT_ROUNDS = 12;
 
 function generateOtp(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
@@ -19,12 +19,13 @@ export class AuthUseCases implements IAuthUseCases {
   constructor(
     private readonly userRepository: IUserRepository,
     private readonly jwtService:     IJwtService,
-    private readonly emailService:   IEmailService
+    private readonly emailService:   IEmailService,
+    private readonly otpService:     IOtpService,
   ) {}
 
-  // ─── LOGIN ────────────────────────────────────────────────────────────────
+  // ─── LOGIN ─────────────────────────────────────────────────────────────────
   async login(data: LoginRequestDTO): Promise<LoginResponseDTO> {
-    const user = await this.userRepository.findByEmailWithRole(data.email);
+    const user = await this.userRepository.findByEmail(data.email);
 
     if (!user) {
       throw new UnauthorizedError(
@@ -41,18 +42,24 @@ export class AuthUseCases implements IAuthUseCases {
       );
     }
 
-    if (!user.isEmailVerified) {
+    // Block non-active statuses
+    if (user.status === 'pending_verification') {
       throw new ForbiddenError(
         'Email not verified.',
         'Please verify your email before logging in. Check your inbox for the OTP.'
       );
     }
+    if (user.status === 'inactive' || user.status === 'suspended') {
+      throw new ForbiddenError(
+        `Account is ${user.status}.`,
+        'Please contact support for assistance.'
+      );
+    }
 
-    const payload      = { userId: user._id!, email: user.email };
+    const payload      = { userId: user._id!, email: user.email, role: user.role };
     const accessToken  = this.jwtService.generateAccessToken(payload);
     const refreshToken = this.jwtService.generateRefreshToken(payload);
 
-    // Store a hashed copy of the refresh token for rotation validation
     const hashedRefresh = await bcrypt.hash(refreshToken, SALT_ROUNDS);
     await this.userRepository.updateRefreshToken(user._id!, hashedRefresh);
     await this.userRepository.updateLastLogin(user._id!);
@@ -61,36 +68,34 @@ export class AuthUseCases implements IAuthUseCases {
       accessToken,
       refreshToken,
       user: {
-        _id:             user._id!,
-        email:           user.email,
-        firstName:       user.firstName,
-        lastName:        user.lastName,
-        isEmailVerified: user.isEmailVerified,
-        roleId:          user.role._id!,        // ObjectId of the role
-        roleName:        user.role.name,         // 'superAdmin' | 'admin' | custom
-        companyId:       user.companyId ?? null, // null for superAdmin
+        _id:            user._id!,
+        email:          user.email,
+        first_name:     user.first_name,
+        last_name:      user.last_name,
+        role:           user.role,
+        status:         user.status,
+        email_verified: user.email_verified,
+        building_id:    user.building_id ?? null,
+        lastLoginAt:    new Date(),
       },
     };
   }
 
-  // ─── LOGOUT ───────────────────────────────────────────────────────────────
+  // ─── LOGOUT ────────────────────────────────────────────────────────────────
   async logout(userId: string): Promise<void> {
     const user = await this.userRepository.findById(userId);
-
     if (!user) {
       throw new NotFoundError(
         'User not found.',
         'The user account associated with this session no longer exists.'
       );
     }
-
     await this.userRepository.updateRefreshToken(userId, null);
   }
 
-  // ─── REFRESH TOKEN ────────────────────────────────────────────────────────
+  // ─── REFRESH TOKEN ──────────────────────────────────────────────────────────
   async refreshToken(data: RefreshTokenRequestDTO): Promise<RefreshTokenResponseDTO> {
     let payload;
-
     try {
       payload = this.jwtService.verifyRefreshToken(data.refreshToken);
     } catch {
@@ -102,16 +107,15 @@ export class AuthUseCases implements IAuthUseCases {
 
     const user = await this.userRepository.findById(payload.userId);
 
-    if (!user || !user.refreshToken) {
+    if (!user || !user.refresh_token) {
       throw new UnauthorizedError(
         'Session not found.',
         'Your session has expired. Please login again.'
       );
     }
 
-    const isTokenValid = await bcrypt.compare(data.refreshToken, user.refreshToken);
+    const isTokenValid = await bcrypt.compare(data.refreshToken, user.refresh_token);
     if (!isTokenValid) {
-      // Possible token-reuse attack — invalidate all sessions
       await this.userRepository.updateRefreshToken(payload.userId, null);
       throw new UnauthorizedError(
         'Refresh token reuse detected. All sessions have been invalidated.',
@@ -119,7 +123,7 @@ export class AuthUseCases implements IAuthUseCases {
       );
     }
 
-    const newPayload      = { userId: user._id!, email: user.email };
+    const newPayload      = { userId: user._id!, email: user.email, role: user.role };
     const newAccessToken  = this.jwtService.generateAccessToken(newPayload);
     const newRefreshToken = this.jwtService.generateRefreshToken(newPayload);
 
@@ -129,7 +133,7 @@ export class AuthUseCases implements IAuthUseCases {
     return { accessToken: newAccessToken, refreshToken: newRefreshToken };
   }
 
-  // ─── SEND OTP ─────────────────────────────────────────────────────────────
+  // ─── SEND OTP (Redis) ────────────────────────────────────────────────────────
   async sendOtp(data: SendOtpRequestDTO): Promise<void> {
     const user = await this.userRepository.findByEmail(data.email);
 
@@ -140,29 +144,26 @@ export class AuthUseCases implements IAuthUseCases {
       );
     }
 
-    if (data.purpose === OtpPurpose.EMAIL_VERIFICATION && user.isEmailVerified) {
+    if (data.purpose === OtpPurpose.EMAIL_VERIFICATION && user.email_verified) {
       throw new BadRequestError(
         'Email is already verified.',
         'You can proceed to login.'
       );
     }
 
-    const otp          = generateOtp();
-    const otpExpiresAt = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
-
-    await this.userRepository.updateOtp(data.email, otp, otpExpiresAt);
+    const otp = generateOtp();
+    await this.otpService.saveOtp(data.email, data.purpose, otp);
     await this.emailService.sendOtpEmail(data.email, otp, data.purpose);
   }
 
-  // ─── RESEND OTP ───────────────────────────────────────────────────────────
+  // ─── RESEND OTP ─────────────────────────────────────────────────────────────
   async resendOtp(data: ResendOtpRequestDTO): Promise<void> {
     await this.sendOtp({ email: data.email, purpose: data.purpose });
   }
 
-  // ─── VALIDATE OTP ─────────────────────────────────────────────────────────
+  // ─── VALIDATE OTP (Redis) ────────────────────────────────────────────────────
   async validateOtp(data: ValidateOtpRequestDTO): Promise<{ resetToken: string }> {
     const user = await this.userRepository.findByEmail(data.email);
-
     if (!user) {
       throw new NotFoundError(
         'No account found with this email address.',
@@ -170,39 +171,39 @@ export class AuthUseCases implements IAuthUseCases {
       );
     }
 
-    if (!user.otp || !user.otpExpiresAt) {
+    const storedOtp = await this.otpService.getOtp(
+      data.email,
+      OtpPurpose.FORGOT_PASSWORD
+    );
+
+    if (!storedOtp) {
       throw new BadRequestError(
-        'No OTP was requested for this account.',
+        'No OTP was requested or it has expired.',
         'Please request a new OTP and try again.'
       );
     }
 
-    if (user.otp !== data.otp) {
+    if (storedOtp !== data.otp) {
       throw new BadRequestError(
         'Invalid OTP.',
         'Please check the OTP sent to your email and try again.'
       );
     }
 
-    if (new Date() > user.otpExpiresAt) {
-      throw new BadRequestError(
-        'OTP has expired.',
-        `OTP is valid for ${OTP_EXPIRY_MINUTES} minutes. Please request a new one.`
-      );
-    }
+    await this.otpService.clearOtp(data.email, OtpPurpose.FORGOT_PASSWORD);
 
     const resetToken = this.jwtService.generateAccessToken({
-      userId: user._id!,
-      email:  user.email,
+      userId:   user._id!,
+      email:    user.email,
+      role: '' as any,
     });
 
     return { resetToken };
   }
 
-  // ─── VERIFY EMAIL ─────────────────────────────────────────────────────────
+  // ─── VERIFY EMAIL (Redis) ────────────────────────────────────────────────────
   async verifyEmail(data: VerifyEmailRequestDTO): Promise<void> {
     const user = await this.userRepository.findByEmail(data.email);
-
     if (!user) {
       throw new NotFoundError(
         'No account found with this email address.',
@@ -210,61 +211,49 @@ export class AuthUseCases implements IAuthUseCases {
       );
     }
 
-    if (user.isEmailVerified) {
+    if (user.email_verified) {
       throw new BadRequestError(
         'Email is already verified.',
         'You can proceed to login.'
       );
     }
 
-    if (!user.otp || !user.otpExpiresAt) {
+    const storedOtp = await this.otpService.getOtp(
+      data.email,
+      OtpPurpose.EMAIL_VERIFICATION
+    );
+
+    if (!storedOtp) {
       throw new BadRequestError(
-        'No OTP was requested for this account.',
+        'No OTP was requested or it has expired.',
         'Please request a new OTP and try again.'
       );
     }
 
-    if (user.otp !== data.otp) {
+    if (storedOtp !== data.otp) {
       throw new BadRequestError(
         'Invalid OTP.',
         'Please check the OTP sent to your email and try again.'
       );
     }
 
-    if (new Date() > user.otpExpiresAt) {
-      throw new BadRequestError(
-        'OTP has expired.',
-        `OTP is valid for ${OTP_EXPIRY_MINUTES} minutes. Please request a new one.`
-      );
-    }
-
-    await this.userRepository.verifyEmail(data.email);
-    await this.userRepository.clearOtp(data.email);
+    await this.otpService.clearOtp(data.email, OtpPurpose.EMAIL_VERIFICATION);
+    await this.userRepository.updateEmailVerified(user._id!);
   }
 
-  // ─── FORGOT PASSWORD ──────────────────────────────────────────────────────
+  // ─── FORGOT PASSWORD ─────────────────────────────────────────────────────────
   async forgotPassword(data: ForgotPasswordRequestDTO): Promise<void> {
     const user = await this.userRepository.findByEmail(data.email);
+    if (!user) return; // silent — prevent email enumeration
 
-    // Always return without error to prevent user enumeration
-   if (!user) {
-    throw new NotFoundError(
-      'No account found with this email address.',
-      'Please check the email address and try again.'
-    );
-  }
-
-    const otp          = generateOtp();
-    const otpExpiresAt = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
-
+    const otp = generateOtp();
+    await this.otpService.saveOtp(data.email, OtpPurpose.FORGOT_PASSWORD, otp);
     await this.emailService.sendOtpEmail(data.email, otp, OtpPurpose.FORGOT_PASSWORD);
-    await this.userRepository.updateOtp(data.email, otp, otpExpiresAt);
   }
 
-  // ─── RESET PASSWORD ───────────────────────────────────────────────────────
+  // ─── RESET PASSWORD ──────────────────────────────────────────────────────────
   async resetPassword(data: ResetPasswordRequestDTO): Promise<void> {
     const user = await this.userRepository.findByEmail(data.email);
-
     if (!user) {
       throw new NotFoundError(
         'No account found with this email address.',
@@ -272,30 +261,29 @@ export class AuthUseCases implements IAuthUseCases {
       );
     }
 
-    if (!user.otp || !user.otpExpiresAt) {
+    const storedOtp = await this.otpService.getOtp(
+      data.email,
+      OtpPurpose.FORGOT_PASSWORD
+    );
+
+    if (!storedOtp) {
       throw new BadRequestError(
-        'No OTP was requested for this account.',
+        'No OTP was requested or it has expired.',
         'Please use the forgot-password flow to request a valid OTP.'
       );
     }
 
-    if (user.otp !== data.otp) {
+    if (storedOtp !== data.otp) {
       throw new BadRequestError(
         'Invalid OTP.',
         'Please check the OTP sent to your email and try again.'
       );
     }
 
-    if (new Date() > user.otpExpiresAt) {
-      throw new BadRequestError(
-        'OTP has expired.',
-        `OTP is valid for ${OTP_EXPIRY_MINUTES} minutes. Please request a new one.`
-      );
-    }
+    await this.otpService.clearOtp(data.email, OtpPurpose.FORGOT_PASSWORD);
 
     const hashedPassword = await bcrypt.hash(data.newPassword, SALT_ROUNDS);
     await this.userRepository.updatePassword(data.email, hashedPassword);
-    await this.userRepository.clearOtp(data.email);
-    await this.userRepository.updateRefreshToken(user._id!, null);
+    await this.userRepository.updateRefreshToken(user._id!, null); // invalidate sessions
   }
 }

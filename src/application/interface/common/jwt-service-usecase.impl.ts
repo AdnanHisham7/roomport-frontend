@@ -1,6 +1,9 @@
+import type { UserRole } from '../../../domain/entities/User';
+
 export interface TokenPayload {
   userId: string;
-  email: string;
+  email:  string;
+  role:   UserRole;
 }
 
 export interface IJwtService {

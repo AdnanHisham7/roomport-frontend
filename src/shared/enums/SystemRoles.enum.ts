@@ -1,23 +1,13 @@
+// Roles stored as plain strings in the User document — no separate Role collection
+
 export enum SystemRole {
-  SUPER_ADMIN = 'superAdmin',
-  ADMIN       = 'admin',
+  SUPER_ADMIN = 'super_admin',  // platform owner — bootstrap only
+  ADMIN       = 'admin',        // building owner — registers publicly
+  MANAGER     = 'manager',      // property manager — created by admin
 }
 
-// These two can NEVER be created on the fly — bootstrap only
-export const PROTECTED_ROLES = [
-  SystemRole.SUPER_ADMIN,
-  SystemRole.ADMIN,
-] as const;
+// Alias used in router authorize() calls
+export { SystemRole as UserRole };
 
-export const SYSTEM_ROLES_SEED = [
-  {
-    name:         SystemRole.SUPER_ADMIN,
-    description:  'Full platform access. Cannot be deleted or modified.',
-    isSystemRole: true,
-  },
-  {
-    name:         SystemRole.ADMIN,
-    description:  'Building owner / company admin. Manages properties and staff.',
-    isSystemRole: true,
-  },
-] as const;
+// super_admin is the only bootstrap-protected role
+export const PROTECTED_ROLES = [SystemRole.SUPER_ADMIN] as const;

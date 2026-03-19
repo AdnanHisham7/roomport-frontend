@@ -1,13 +1,15 @@
-import type { ForgotPasswordRequestDTO, LoginRequestDTO, 
-    LoginResponseDTO,
-    RefreshTokenRequestDTO,
-    RefreshTokenResponseDTO, 
-    ResendOtpRequestDTO, 
-    ResetPasswordRequestDTO, 
-    SendOtpRequestDTO, 
-    ValidateOtpRequestDTO,
-    VerifyEmailRequestDTO} from "../../../application/dtos/user-usecaase/authdto";
-
+import type {
+  ForgotPasswordRequestDTO,
+  LoginRequestDTO,
+  LoginResponseDTO,
+  RefreshTokenRequestDTO,
+  RefreshTokenResponseDTO,
+  ResendOtpRequestDTO,
+  ResetPasswordRequestDTO,
+  SendOtpRequestDTO,
+  VerifyEmailRequestDTO,
+  ValidateOtpRequestDTO
+} from '../../dtos/user-usecaase/authdto';
 
 export interface IAuthUseCases {
   login(data: LoginRequestDTO): Promise<LoginResponseDTO>;

@@ -1,5 +1,5 @@
 import mongoose, { Document, Schema } from 'mongoose';
-import type { IRole } from '../../../domain/entities/Role.js';
+import type { IRole } from '../../../domain/entities/Role';
 
 export interface IRoleDocument extends Omit<IRole, '_id'>, Document {}
 

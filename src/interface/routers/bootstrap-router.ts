@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { bootstrapController } from '../../infrastructure/DIContainer';
+import { bootstrapController } from '../../infrastructure/DIContainer/index';
 
 const router = Router();
 

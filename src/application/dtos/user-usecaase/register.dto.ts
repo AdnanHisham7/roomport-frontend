@@ -1,18 +1,17 @@
-// ─── Register ─────────────────────────────────────────────────────────────────
 export interface RegisterRequestDTO {
-  email:     string;
-  password:  string;
-  firstName: string;
-  lastName:  string;
-  phone?:    string;
+  email:        string;
+  password:     string;
+  first_name:   string;
+  last_name:    string;
+  phone_number?: string;
 }
 
 export interface RegisterResponseDTO {
   message: string;
   user: {
-    _id:       string;
-    email:     string;
-    firstName: string;
-    lastName:  string;
+    _id:        string;
+    email:      string;
+    first_name: string;
+    last_name:  string;
   };
 }

@@ -1,5 +1,5 @@
 import mongoose, { Document, Schema } from 'mongoose';
-import type { ICompany } from '../../../domain/entities/Company.js';
+import { ICompany } from '../../../domain/entities/Company';
 
 export interface ICompanyDocument extends Omit<ICompany, '_id'>, Document {}
 
