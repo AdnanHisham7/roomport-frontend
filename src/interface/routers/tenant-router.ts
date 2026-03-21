@@ -1,8 +1,9 @@
 // ─── TENANT ROUTES (midlaj) ───────────────────────────────────────────────────
 import { Router }             from 'express';
-import { UserRole }           from '../../shared/enums/SystemRoles.enum.js';
-import { authenticate, authorize } from '../middleware/auth-middleware.js';
-import { TenantController } from '../controllers/tenant-controller.js';
+import { UserRole } from '../../shared/enums/SystemRoles.enum';
+import { TenantController } from '../controllers/tenant-controller';
+import { authenticate, authorize } from '../middleware/auth-middleware';
+
 
 const ADMIN_ROLES = [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER];
 const SUPER_ROLES = [UserRole.ADMIN, UserRole.SUPER_ADMIN];
