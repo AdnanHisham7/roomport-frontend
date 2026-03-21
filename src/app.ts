@@ -5,7 +5,9 @@ import rateLimit from 'express-rate-limit';
 import morgan from 'morgan';
 import authRoutes from './interface/routers/auth-router';
 import systemRoutes from './interface/routers/bootstrap-router';
+import  { createTenantRouter } from './interface/routers/tenant-router';
 import { globalErrorHandler } from './interface/middleware/errorhandle-middleware';
+import { tenantController } from './infrastructure/DIContainer';
 
 const createApp = (): Application => {
   const app = express();
@@ -62,7 +64,7 @@ const createApp = (): Application => {
 
   app.use('/api/v1/auth', authLimiter, authRoutes);
   app.use('/api/v1/system', systemRoutes);
-
+  app.use('/api/v1/tenants', createTenantRouter(tenantController));
   app.use((_req: Request, res: Response) => {
     res.status(404).json({
       success: false,
