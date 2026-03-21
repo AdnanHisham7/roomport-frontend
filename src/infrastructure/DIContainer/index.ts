@@ -1,10 +1,13 @@
 import { AuthUseCases } from "../../application/usecase/common/auth-usecase";
 import { RegisterUseCase } from "../../application/usecase/common/register-usecase";
+import { DocumentUseCases } from "../../application/usecase/document/document-usecase";
 import { BootstrapSuperAdminUseCase } from "../../application/usecase/system/bootstrap-super-admin.usecase";
 import { TenantUseCases } from "../../application/usecase/tenant/tenant-usecase";
 import { AuthController } from "../../interface/controllers/auth-controller";
 import { BootstrapController } from "../../interface/controllers/bootstrap-controller";
+import { DocumentController } from "../../interface/controllers/document-controller";
 import { TenantController } from "../../interface/controllers/tenant-controller";
+import { DocumentRepository } from "../repository/document-repository";
 import { TenantRepository } from "../repository/tenant-repository";
 import { UserRepository } from "../repository/user-repository";
 import { EmailService } from "../services/email-service";
@@ -15,6 +18,7 @@ import { RedisOtpService } from "../services/redis-otp-service";
 // ─── Repositories ──────────────────────────────────────────────────────────────
 const userRepository     = new UserRepository();
 const tenantRepository   = new TenantRepository();
+const documentRepository = new DocumentRepository();
 
 
 // ─── Services ─────────────────────────────────────────────────────────────────
@@ -27,10 +31,12 @@ const authUseCases     = new AuthUseCases(userRepository, jwtService, emailServi
 const registerUseCase  = new RegisterUseCase(userRepository, emailService, otpService);
 const bootstrapUseCase = new BootstrapSuperAdminUseCase(userRepository);
 const tenantUseCases   = new TenantUseCases(tenantRepository);
+const documentUseCases = new DocumentUseCases(documentRepository);
 
 
 // ─── Controllers ──────────────────────────────────────────────────────────────
 export const authController      = new AuthController(authUseCases, registerUseCase);
 export const bootstrapController = new BootstrapController(bootstrapUseCase);
 export const tenantController    = new TenantController(tenantUseCases);
+export const documentController  = new DocumentController(documentUseCases);
 
