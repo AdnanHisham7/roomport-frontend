@@ -8,7 +8,9 @@ import systemRoutes from './interface/routers/bootstrap-router';
 import  { createTenantRouter } from './interface/routers/tenant-router';
 import { createDocumentRouter } from './interface/routers/document-router';
 import { globalErrorHandler } from './interface/middleware/errorhandle-middleware';
-import { documentController, tenantController } from './infrastructure/DIContainer';
+import { documentController, tenantController, agreementController } from './infrastructure/DIContainer';
+import { createAgreementRouter } from './interface/routers/agreement-router';
+import { AgreementController } from './interface/controllers/agreement-controller';
 
 const createApp = (): Application => {
   const app = express();
@@ -67,6 +69,7 @@ const createApp = (): Application => {
   app.use('/api/v1/system', systemRoutes);
   app.use('/api/v1/tenants', createTenantRouter(tenantController));
   app.use('/api/v1/documents', createDocumentRouter(documentController));
+  app.use('/api/v1/agreements', createAgreementRouter(agreementController));
   
   app.use((_req: Request, res: Response) => {
     res.status(404).json({
