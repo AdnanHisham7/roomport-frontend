@@ -1,0 +1,15 @@
+﻿src/infrastructure/repository/document-repository.ts(3,44): error TS2552: Cannot find name 'IDocumentRepository'. Did you mean 'DocumentRepository'?
+src/infrastructure/repository/document-repository.ts(9,31): error TS2552: Cannot find name 'IDocument'. Did you mean 'Document'?
+src/infrastructure/repository/document-repository.ts(22,39): error TS2552: Cannot find name 'IDocument'. Did you mean 'Document'?
+src/infrastructure/repository/document-repository.ts(23,23): error TS2304: Cannot find name 'DocumentModel'.
+src/infrastructure/repository/document-repository.ts(29,27): error TS2552: Cannot find name 'IDocument'. Did you mean 'Document'?
+src/infrastructure/repository/document-repository.ts(30,14): error TS2552: Cannot find name 'IDocument'. Did you mean 'Document'?
+src/infrastructure/repository/document-repository.ts(38,24): error TS2304: Cannot find name 'DocumentModel'.
+src/infrastructure/repository/document-repository.ts(39,22): error TS7006: Parameter 'd' implicitly has an 'any' type.
+src/infrastructure/repository/document-repository.ts(42,27): error TS2552: Cannot find name 'IDocument'. Did you mean 'Document'?
+src/infrastructure/repository/document-repository.ts(42,83): error TS2552: Cannot find name 'IDocument'. Did you mean 'Document'?
+src/infrastructure/repository/document-repository.ts(43,23): error TS2304: Cannot find name 'DocumentModel'.
+src/infrastructure/repository/document-repository.ts(48,26): error TS2304: Cannot find name 'DocumentModel'.
+src/infrastructure/repository/document-repository.ts(53,21): error TS2304: Cannot find name 'DocumentModel'.
+src/infrastructure/repository/role-repository.ts(3,27): error TS2307: Cannot find module '../db/model/role-model' or its corresponding type declarations.
+src/infrastructure/repository/role-repository.ts(36,22): error TS7006: Parameter 'd' implicitly has an 'any' type.
