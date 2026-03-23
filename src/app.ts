@@ -80,6 +80,7 @@ const createApp = (): Application => {
   app.use('/api/v1/agreements', createAgreementRouter(agreementController));
   app.use('/api/v1/payments', createPaymentRouter(paymentController));
   app.use('/api/v1/units', createUnitRouter(unitController));
+  app.use('/api/v1/units', createUnitRouter(unitController));
 
   app.use('/api/v1/buildings',     createBuildingRouter(buildingController, floorController));
 
