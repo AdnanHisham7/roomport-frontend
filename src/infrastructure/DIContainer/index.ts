@@ -35,6 +35,9 @@ import { NotificationRepositoryImpl } from "../repository/notification-repositor
 import { TwilioSmsService } from "../services/twilio-sms.service";
 import { NotificationUseCase } from "../../application/usecase/notification/notification-usecase";
 import { NotificationController } from "../../interface/controllers/notification-controller";
+import { AnalyticsController } from "../../interface/controllers/analytics-controller";
+import { AnalyticsUseCase } from "../../application/usecase/analytics/analytics-usecase";
+import { AnalyticsRepository } from "../repository/analytics-repository";
 
 // ─── Repositories ──────────────────────────────────────────────────────────────
 const userRepository = new UserRepository();
@@ -44,6 +47,7 @@ const agreementRepository = new AgreementRepository();
 const subscriptionRepository = new SubscriptionRepository();
 const unitRepository = new UnitRepository();
 const notificationRepository = new NotificationRepositoryImpl();
+const analyticsRepository = new AnalyticsRepository();
 
 // ─── Services ─────────────────────────────────────────────────────────────────
 const jwtService = new JwtService();
@@ -70,6 +74,7 @@ const createCheckoutSessionUseCase = new CreateCheckoutSessionUseCase(stripeServ
 const handleWebhookUseCase = new HandleWebhookUseCase(stripeService, userRepository, subscriptionRepository, emailService);
 const unitUseCases = new UnitUseCases(unitRepository);
 const notificationUseCase = new NotificationUseCase(notificationRepository, emailService, twilioSmsService, userRepository);
+const analyticsUseCase = new AnalyticsUseCase(analyticsRepository);
 
 // ─── Controllers ──────────────────────────────────────────────────────────────
 export const authController = new AuthController(authUseCases, registerUseCase);
@@ -80,3 +85,4 @@ export const agreementController = new AgreementController(agreementUseCases);
 export const paymentController = new PaymentController(createCheckoutSessionUseCase, handleWebhookUseCase);
 export const unitController = new UnitController(unitUseCases);
 export const notificationController = new NotificationController(notificationUseCase);
+export const analyticsController = new AnalyticsController(analyticsUseCase);
