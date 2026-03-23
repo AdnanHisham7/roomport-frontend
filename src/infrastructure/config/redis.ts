@@ -3,6 +3,7 @@ import { Redis } from 'ioredis';
 let redisClient: Redis | null = null;
 
 export const getRedisClient = (): Redis => {
+  console.log(redisClient)
   if (!redisClient) {
     redisClient = new Redis({
       host:          process.env.REDIS_HOST     || 'localhost',
