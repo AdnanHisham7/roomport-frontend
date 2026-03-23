@@ -31,6 +31,10 @@ import { PaymentController } from "../../interface/controllers/payment-controlle
 import { UnitUseCases } from "../../application/usecase/unit/unit-usecase";
 import { UnitController } from "../../interface/controllers/unit-controller";
 import { UnitRepository } from "../repository/unit-repository";
+import { NotificationRepositoryImpl } from "../repository/notification-repository-impl";
+import { TwilioSmsService } from "../services/twilio-sms.service";
+import { NotificationUseCase } from "../../application/usecase/notification/notification-usecase";
+import { NotificationController } from "../../interface/controllers/notification-controller";
 
 // ─── Repositories ──────────────────────────────────────────────────────────────
 const userRepository = new UserRepository();
@@ -39,6 +43,7 @@ const documentRepository = new DocumentRepository();
 const agreementRepository = new AgreementRepository();
 const subscriptionRepository = new SubscriptionRepository();
 const unitRepository = new UnitRepository();
+const notificationRepository = new NotificationRepositoryImpl();
 
 // ─── Services ─────────────────────────────────────────────────────────────────
 const jwtService = new JwtService();
@@ -46,6 +51,7 @@ const emailService = new EmailService();
 const otpService = new RedisOtpService();
 const pdfService = new PdfService();
 const stripeService = new StripeService();
+const twilioSmsService = new TwilioSmsService();
 
 // ─── Use Cases ─────────────────────────────────────────────────────────────────
 const authUseCases = new AuthUseCases(userRepository, jwtService, emailService, otpService);
@@ -63,6 +69,7 @@ const agreementUseCases = new AgreementUseCases(
 const createCheckoutSessionUseCase = new CreateCheckoutSessionUseCase(stripeService, userRepository, subscriptionRepository);
 const handleWebhookUseCase = new HandleWebhookUseCase(stripeService, userRepository, subscriptionRepository, emailService);
 const unitUseCases = new UnitUseCases(unitRepository);
+const notificationUseCase = new NotificationUseCase(notificationRepository, emailService, twilioSmsService, userRepository);
 
 // ─── Controllers ──────────────────────────────────────────────────────────────
 export const authController = new AuthController(authUseCases, registerUseCase);
@@ -72,3 +79,4 @@ export const documentController = new DocumentController(documentUseCases);
 export const agreementController = new AgreementController(agreementUseCases);
 export const paymentController = new PaymentController(createCheckoutSessionUseCase, handleWebhookUseCase);
 export const unitController = new UnitController(unitUseCases);
+export const notificationController = new NotificationController(notificationUseCase);

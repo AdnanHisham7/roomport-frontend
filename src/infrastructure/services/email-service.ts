@@ -140,6 +140,21 @@ export class EmailService implements IEmailService {
     });
   }
 
+  // ── Generic Notification Email ──────────────────────────────────────────────
+  async sendNotificationEmail(to: string, subject: string, message: string): Promise<void> {
+    await this.transporter.sendMail({
+      from: this.from(),
+      to,
+      subject,
+      html: `
+        <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px">
+          <h2 style="color:#333">${subject}</h2>
+          <p>${message}</p>
+        </div>
+      `
+    });
+  }
+
   private buildOtpContent(otp: string, purpose: string): { subject: string; body: string } {
     if (purpose === OtpPurpose.FORGOT_PASSWORD) {
       return {
