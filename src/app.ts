@@ -15,6 +15,8 @@ import { createPaymentRouter } from './interface/routers/payment-router';
 import { paymentController } from './infrastructure/DIContainer';
 import { createUnitRouter } from './interface/routers/unit-router';
 import { unitController } from './infrastructure/DIContainer';
+import { notificationRouter } from './interface/routers/notification-router';
+import { notificationController } from './infrastructure/DIContainer';
 
 import { createBuildingRouter } from './interface/routers/building-router';
 const createApp = (): Application => {
