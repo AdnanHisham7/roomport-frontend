@@ -1,0 +1,48 @@
+import { IBuilding } from "../../../domain/entities/Building";
+import { IBuildingRepository } from "../../../domain/repository/building-repository-impl";
+import { BadRequestError, NotFoundError } from "../../../shared/error/app-error";
+import { BuildingOccupancyStatsDTO, BuildingResponseDTO, CreateBuildingDTO, UpdateBuildingDTO } from "../../dtos/building/building.dto";
+
+
+function toResponse(b: IBuilding): BuildingResponseDTO {
+  return { _id: b._id!, name: b.name, type: b.type, status: b.status, location: b.location, ownerId: b.ownerId, managerId: b.managerId, totalUnits: b.totalUnits, totalFloors: b.totalFloors, sqft: b.sqft, lift: b.lift, helipad: b.helipad, nearAirport: b.nearAirport, nearRailwayStation: b.nearRailwayStation, nearBusStand: b.nearBusStand, nearPark: b.nearPark, amenities: b.amenities, images: b.images, documents: b.documents, description: b.description, yearOfBuild: b.yearOfBuild, createdAt: b.createdAt, updatedAt: b.updatedAt };
+}
+
+export class BuildingUseCases {
+  constructor(private readonly buildingRepo: IBuildingRepository) {}
+
+  async create(data: CreateBuildingDTO): Promise<BuildingResponseDTO> {
+    if (data.totalUnits < 1)  throw new BadRequestError('totalUnits must be at least 1.');
+    if (data.totalFloors < 1) throw new BadRequestError('totalFloors must be at least 1.');
+    if (!data.location?.address || !data.location?.city || !data.location?.state || !data.location?.pincode) throw new BadRequestError('location (address, city, state, pincode) is required.');
+    const b = await this.buildingRepo.create({ ...data, lift: data.lift ?? false, helipad: data.helipad ?? false, status: 'active' });
+    return toResponse(b);
+  }
+
+  async getAll(filter?: any): Promise<BuildingResponseDTO[]> {
+    return (await this.buildingRepo.findAll(filter)).map(toResponse);
+  }
+
+  async getById(id: string): Promise<BuildingResponseDTO> {
+    const b = await this.buildingRepo.findById(id);
+    if (!b) throw new NotFoundError('Building not found.');
+    return toResponse(b);
+  }
+
+  async update(id: string, data: UpdateBuildingDTO): Promise<BuildingResponseDTO> {
+    if (!await this.buildingRepo.existsById(id)) throw new NotFoundError('Building not found.');
+    const updated = await this.buildingRepo.update(id, data as any);
+    return toResponse(updated!);
+  }
+
+  async delete(id: string): Promise<void> {
+    if (!await this.buildingRepo.existsById(id)) throw new NotFoundError('Building not found.');
+    await this.buildingRepo.delete(id);
+  }
+
+  async getOccupancyStats(ownerId?: string): Promise<BuildingOccupancyStatsDTO> {
+    const buildings = await this.buildingRepo.findAll(ownerId ? { ownerId } : undefined);
+    const totalUnits = buildings.reduce((s, b) => s + b.totalUnits, 0);
+    return { totalBuildings: buildings.length, totalUnits, occupiedUnits: 0, vacantUnits: totalUnits, occupancyRate: 0, byBuilding: buildings.map(b => ({ _id: b._id!, name: b.name, totalUnits: b.totalUnits, occupiedUnits: 0, vacantUnits: b.totalUnits, occupancyRate: 0 })) };
+  }
+}

@@ -13,7 +13,7 @@ export class RedisOtpService implements IOtpService {
       password:      process.env.REDIS_PASSWORD || undefined,
       db:            parseInt(process.env.REDIS_DB   || '0', 10),
       retryStrategy: (times: number) => Math.min(times * 200, 3000),
-    });
+    });   
 
     this.client.on('connect', () => console.log('✅  Redis connected'));
     this.client.on('error',   (err: Error) => console.error('❌  Redis error:', err.message));

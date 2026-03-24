@@ -1,4 +1,7 @@
 
+import type { IDocument } from "../../domain/entities/Document";
+import type { IDocumentRepository } from "../../domain/repository/documet-repository.impl";
+import { DocumentModel } from "../db/model/document-model";
 
 export class DocumentRepository implements IDocumentRepository {
 
