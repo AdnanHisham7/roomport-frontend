@@ -17,6 +17,8 @@ import { createUnitRouter } from './interface/routers/unit-router';
 import { unitController } from './infrastructure/DIContainer';
 import { notificationRouter } from './interface/routers/notification-router';
 import { notificationController } from './infrastructure/DIContainer';
+import { notificationRouter } from './interface/routers/notification-router';
+import { notificationController } from './infrastructure/DIContainer';
 
 import { createBuildingRouter } from './interface/routers/building-router';
 const createApp = (): Application => {
@@ -83,6 +85,7 @@ const createApp = (): Application => {
   app.use('/api/v1/payments', createPaymentRouter(paymentController));
   app.use('/api/v1/units', createUnitRouter(unitController));
   app.use('/api/v1/units', createUnitRouter(unitController));
+  app.use('/api/v1/notifications', notificationRouter(notificationController));
 
   app.use('/api/v1/buildings',     createBuildingRouter(buildingController, floorController));
 
