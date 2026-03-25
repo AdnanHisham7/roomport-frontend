@@ -10,15 +10,10 @@ import { createDocumentRouter } from './interface/routers/document-router';
 import { globalErrorHandler } from './interface/middleware/errorhandle-middleware';
 import { documentController, tenantController, agreementController, buildingController, floorController } from './infrastructure/DIContainer';
 import { createAgreementRouter } from './interface/routers/agreement-router';
-import { AgreementController } from './interface/controllers/agreement-controller';
 import { createPaymentRouter } from './interface/routers/payment-router';
 import { paymentController } from './infrastructure/DIContainer';
 import { createUnitRouter } from './interface/routers/unit-router';
 import { unitController } from './infrastructure/DIContainer';
-import { notificationRouter } from './interface/routers/notification-router';
-import { notificationController } from './infrastructure/DIContainer';
-import { notificationRouter } from './interface/routers/notification-router';
-import { notificationController } from './infrastructure/DIContainer';
 
 import { createBuildingRouter } from './interface/routers/building-router';
 const createApp = (): Application => {
@@ -84,8 +79,6 @@ const createApp = (): Application => {
   app.use('/api/v1/agreements', createAgreementRouter(agreementController));
   app.use('/api/v1/payments', createPaymentRouter(paymentController));
   app.use('/api/v1/units', createUnitRouter(unitController));
-  app.use('/api/v1/units', createUnitRouter(unitController));
-  app.use('/api/v1/notifications', notificationRouter(notificationController));
 
   app.use('/api/v1/buildings',     createBuildingRouter(buildingController, floorController));
 

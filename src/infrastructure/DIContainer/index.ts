@@ -48,6 +48,8 @@ const subscriptionRepository = new SubscriptionRepository();
 const unitRepository = new UnitRepository();
 const analyticsRepository = new AnalyticsRepository();
 const notificationRepository = new NotificationRepositoryImpl();
+const buildingRepository = new BuildingRepository();
+const floorRepository = new FloorRepository();
 
 // ─── Services ─────────────────────────────────────────────────────────────────
 const jwtService = new JwtService();
@@ -75,6 +77,8 @@ const handleWebhookUseCase = new HandleWebhookUseCase(stripeService, userReposit
 const unitUseCases = new UnitUseCases(unitRepository);
 const analyticsUseCase = new AnalyticsUseCase(analyticsRepository);
 const notificationUseCase = new NotificationUseCase(notificationRepository, emailService, twilioSmsService, userRepository);
+const buildingUseCases = new BuildingUseCases(buildingRepository);
+const floorUseCases = new FloorUseCases(floorRepository, buildingRepository);
 
 // ─── Controllers ──────────────────────────────────────────────────────────────
 export const authController = new AuthController(authUseCases, registerUseCase);
@@ -86,3 +90,5 @@ export const paymentController = new PaymentController(createCheckoutSessionUseC
 export const unitController = new UnitController(unitUseCases);
 export const notificationController = new NotificationController(notificationUseCase);
 export const analyticsController = new AnalyticsController(analyticsUseCase);
+export const buildingController = new BuildingController(buildingUseCases);
+export const floorController = new FloorController(floorUseCases);
