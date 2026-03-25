@@ -24,6 +24,27 @@ export class EmailService implements IEmailService {
     await this.transporter.sendMail({ from: this.from(), to, subject, html: body });
   }
 
+  // ── Welcome Credentials ────────────────────────────────────────────────────
+  async sendWelcomeCredentials(to: string, name: string, tempPassword: string): Promise<void> {
+    await this.transporter.sendMail({
+      from: this.from(),
+      to,
+      subject: 'Welcome to PropertySaaS! Here are your login credentials',
+      html: `
+        <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px">
+          <h2 style="color:#333">Welcome to PropertySaaS, ${name}!</h2>
+          <p>Your payment was successful and your account has been automatically created.</p>
+          <p>You can now log in using the following credentials:</p>
+          <div style="background:#f4f4f4;padding:15px;border-radius:6px;margin:20px 0">
+            <p><strong>Email:</strong> ${to}</p>
+            <p><strong>Password:</strong> ${tempPassword}</p>
+          </div>
+          <p>We strongly recommend changing your password after your first login.</p>
+        </div>
+      `,
+    });
+  }
+
   // ── Step 2: Admin sends signing link to tenant ─────────────────────────────
   async sendSigningLink(
     to: string,

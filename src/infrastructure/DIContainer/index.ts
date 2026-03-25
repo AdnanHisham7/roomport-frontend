@@ -23,28 +23,31 @@ import { EmailService } from "../services/email-service";
 import { JwtService } from "../services/jwt-service";
 import { PdfService } from "../services/pdf-service";
 import { RedisOtpService } from "../services/redis-otp-service";
-
+import { SubscriptionRepository } from "../repository/subscription-repository";
+import { StripeService } from "../services/stripe.service";
+import { CreateCheckoutSessionUseCase } from "../../application/usecase/payment/create-checkout-session-usecase";
+import { HandleWebhookUseCase } from "../../application/usecase/payment/handle-webhook-usecase";
+import { PaymentController } from "../../interface/controllers/payment-controller";
 
 // ─── Repositories ──────────────────────────────────────────────────────────────
-const userRepository     = new UserRepository();
-const tenantRepository   = new TenantRepository();
+const userRepository = new UserRepository();
+const tenantRepository = new TenantRepository();
 const documentRepository = new DocumentRepository();
 const agreementRepository = new AgreementRepository();
-const buildingRepo     = new BuildingRepository();
-const floorRepo        = new FloorRepository();
 
 
 // ─── Services ─────────────────────────────────────────────────────────────────
-const jwtService   = new JwtService();
+const jwtService = new JwtService();
 const emailService = new EmailService();
-const otpService   = new RedisOtpService();
-const pdfService   = new PdfService();
+const otpService = new RedisOtpService();
+const pdfService = new PdfService();
+const stripeService = new StripeService();
 
 // ─── Use Cases ─────────────────────────────────────────────────────────────────
-const authUseCases     = new AuthUseCases(userRepository, jwtService, emailService, otpService);
-const registerUseCase  = new RegisterUseCase(userRepository, emailService, otpService);
+const authUseCases = new AuthUseCases(userRepository, jwtService, emailService, otpService);
+const registerUseCase = new RegisterUseCase(userRepository, emailService, otpService);
 const bootstrapUseCase = new BootstrapSuperAdminUseCase(userRepository);
-const tenantUseCases   = new TenantUseCases(tenantRepository);
+const tenantUseCases = new TenantUseCases(tenantRepository);
 const documentUseCases = new DocumentUseCases(documentRepository);
 const agreementUseCases = new AgreementUseCases(
   agreementRepository,
@@ -53,14 +56,10 @@ const agreementUseCases = new AgreementUseCases(
   emailService,
   pdfService
 );
-const buildingUseCases  = new BuildingUseCases(buildingRepo);
-const floorUseCases     = new FloorUseCases(floorRepo, buildingRepo);
 
 // ─── Controllers ──────────────────────────────────────────────────────────────
-export const authController      = new AuthController(authUseCases, registerUseCase);
+export const authController = new AuthController(authUseCases, registerUseCase);
 export const bootstrapController = new BootstrapController(bootstrapUseCase);
-export const tenantController    = new TenantController(tenantUseCases);
-export const documentController  = new DocumentController(documentUseCases);
+export const tenantController = new TenantController(tenantUseCases);
+export const documentController = new DocumentController(documentUseCases);
 export const agreementController = new AgreementController(agreementUseCases);
-export const buildingController  = new BuildingController(buildingUseCases);
-export const floorController     = new FloorController(floorUseCases);
