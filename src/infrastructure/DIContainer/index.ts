@@ -38,6 +38,8 @@ import { NotificationRepositoryImpl } from "../repository/notification-repositor
 import { TwilioSmsService } from "../services/twilio-sms.service";
 import { NotificationUseCase } from "../../application/usecase/notification/notification-usecase";
 import { NotificationController } from "../../interface/controllers/notification-controller";
+import { UserUseCase } from "../../application/usecase/user/user-usecase";
+import { UserController } from "../../interface/controllers/user-controller";
 
 // ─── Repositories ──────────────────────────────────────────────────────────────
 const userRepository = new UserRepository();
@@ -60,6 +62,7 @@ const stripeService = new StripeService();
 const twilioSmsService = new TwilioSmsService();
 
 // ─── Use Cases ─────────────────────────────────────────────────────────────────
+const userUseCase = new UserUseCase(userRepository);
 const authUseCases = new AuthUseCases(userRepository, jwtService, emailService, otpService);
 const registerUseCase = new RegisterUseCase(userRepository, emailService, otpService);
 const bootstrapUseCase = new BootstrapSuperAdminUseCase(userRepository);
@@ -92,3 +95,4 @@ export const notificationController = new NotificationController(notificationUse
 export const analyticsController = new AnalyticsController(analyticsUseCase);
 export const buildingController = new BuildingController(buildingUseCases);
 export const floorController = new FloorController(floorUseCases);
+export const userController = new UserController(userUseCase);
