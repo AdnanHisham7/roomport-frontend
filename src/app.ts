@@ -11,7 +11,10 @@ import { globalErrorHandler } from './interface/middleware/errorhandle-middlewar
 import { documentController, tenantController, agreementController, buildingController, floorController } from './infrastructure/DIContainer';
 import { createAgreementRouter } from './interface/routers/agreement-router';
 import { AgreementController } from './interface/controllers/agreement-controller';
+import { createPaymentRouter } from './interface/routers/payment-router';
+import { paymentController } from './infrastructure/DIContainer';
 
+import { createBuildingRouter } from './interface/routers/building-router';
 const createApp = (): Application => {
   const app = express();
   app.use(morgan('dev'));
@@ -73,7 +76,10 @@ const createApp = (): Application => {
   app.use('/api/v1/tenants', createTenantRouter(tenantController));
   app.use('/api/v1/documents', createDocumentRouter(documentController));
   app.use('/api/v1/agreements', createAgreementRouter(agreementController));
-  
+  app.use('/api/v1/payments', createPaymentRouter(paymentController));
+
+  app.use('/api/v1/buildings',     createBuildingRouter(buildingController, floorController));
+
   app.use((_req: Request, res: Response) => {
     res.status(404).json({
       success: false,
