@@ -17,7 +17,8 @@ import { unitController } from './infrastructure/DIContainer';
 
 import { createBuildingRouter } from './interface/routers/building-router';
 import { createUserRouter } from './interface/routers/user-router';
-import { userController } from './infrastructure/DIContainer';
+import { userController, activityLogController } from './infrastructure/DIContainer';
+import { activityLogRouter } from './interface/routers/activity-log-router';
 const createApp = (): Application => {
   const app = express();
   app.use(morgan('dev'));
@@ -84,6 +85,7 @@ const createApp = (): Application => {
 
   app.use('/api/v1/buildings',     createBuildingRouter(buildingController, floorController));
   app.use('/api/v1/users',         createUserRouter(userController));
+  app.use('/api/v1/activity-logs', activityLogRouter(activityLogController));
 
   app.use((_req: Request, res: Response) => {
     res.status(404).json({

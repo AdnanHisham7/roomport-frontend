@@ -40,6 +40,9 @@ import { NotificationUseCase } from "../../application/usecase/notification/noti
 import { NotificationController } from "../../interface/controllers/notification-controller";
 import { UserUseCase } from "../../application/usecase/user/user-usecase";
 import { UserController } from "../../interface/controllers/user-controller";
+import { ActivityLogRepositoryImpl } from "../repository/activity-log-repository";
+import { ActivityLogUsecaseImpl } from "../../application/interface/activity-log/activity-log-usecase.impl";
+import { ActivityLogController } from "../../interface/controllers/activity-log-controller";
 
 // ─── Repositories ──────────────────────────────────────────────────────────────
 const userRepository = new UserRepository();
@@ -52,6 +55,7 @@ const analyticsRepository = new AnalyticsRepository();
 const notificationRepository = new NotificationRepositoryImpl();
 const buildingRepository = new BuildingRepository();
 const floorRepository = new FloorRepository();
+const activityLogRepository = new ActivityLogRepositoryImpl();
 
 // ─── Services ─────────────────────────────────────────────────────────────────
 const jwtService = new JwtService();
@@ -82,6 +86,7 @@ const analyticsUseCase = new AnalyticsUseCase(analyticsRepository);
 const notificationUseCase = new NotificationUseCase(notificationRepository, emailService, twilioSmsService, userRepository);
 const buildingUseCases = new BuildingUseCases(buildingRepository);
 const floorUseCases = new FloorUseCases(floorRepository, buildingRepository);
+const activityLogUseCase = new ActivityLogUsecaseImpl(activityLogRepository);
 
 // ─── Controllers ──────────────────────────────────────────────────────────────
 export const authController = new AuthController(authUseCases, registerUseCase);
@@ -96,3 +101,4 @@ export const analyticsController = new AnalyticsController(analyticsUseCase);
 export const buildingController = new BuildingController(buildingUseCases);
 export const floorController = new FloorController(floorUseCases);
 export const userController = new UserController(userUseCase);
+export const activityLogController = new ActivityLogController(activityLogUseCase);
