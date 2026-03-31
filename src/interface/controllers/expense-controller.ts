@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express';
 import { AppError } from '../../shared/error/app-error';
+import { IExpenseUseCases } from '../../application/interface/expence/expense-usecase.impl';
 
 
 export class ExpenseController {

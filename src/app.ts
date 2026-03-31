@@ -5,12 +5,20 @@ import rateLimit from 'express-rate-limit';
 import morgan from 'morgan';
 import authRoutes from './interface/routers/auth-router';
 import systemRoutes from './interface/routers/bootstrap-router';
-import  { createTenantRouter } from './interface/routers/tenant-router';
+import { createTenantRouter } from './interface/routers/tenant-router';
 import { createDocumentRouter } from './interface/routers/document-router';
 import { globalErrorHandler } from './interface/middleware/errorhandle-middleware';
 import { documentController, tenantController, agreementController, buildingController, floorController } from './infrastructure/DIContainer';
 import { createAgreementRouter } from './interface/routers/agreement-router';
+import { createPaymentRouter } from './interface/routers/payment-router';
+import { paymentController } from './infrastructure/DIContainer';
+import { createUnitRouter } from './interface/routers/unit-router';
+import { unitController } from './infrastructure/DIContainer';
+
 import { createBuildingRouter } from './interface/routers/building-router';
+import { createUserRouter } from './interface/routers/user-router';
+import { userController, activityLogController } from './infrastructure/DIContainer';
+import { activityLogRouter } from './interface/routers/activity-log-router';
 const createApp = (): Application => {
   const app = express();
   app.use(morgan('dev'));
@@ -47,6 +55,9 @@ const createApp = (): Application => {
     },
   });
 
+  // ✅ Set up Stripe Webhook parser BEFORE express.json()
+  app.use('/api/v1/payments/webhook', express.raw({ type: 'application/json' }));
+
   // ✅ Body parsers FIRST so req.body is available in morgan
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ extended: true, limit: '10mb' }));
@@ -69,7 +80,12 @@ const createApp = (): Application => {
   app.use('/api/v1/tenants', createTenantRouter(tenantController));
   app.use('/api/v1/documents', createDocumentRouter(documentController));
   app.use('/api/v1/agreements', createAgreementRouter(agreementController));
+  app.use('/api/v1/payments', createPaymentRouter(paymentController));
+  app.use('/api/v1/units', createUnitRouter(unitController));
+
   app.use('/api/v1/buildings',     createBuildingRouter(buildingController, floorController));
+  app.use('/api/v1/users',         createUserRouter(userController));
+  app.use('/api/v1/activity-logs', activityLogRouter(activityLogController));
 
   app.use((_req: Request, res: Response) => {
     res.status(404).json({
