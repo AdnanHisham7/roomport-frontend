@@ -3,6 +3,7 @@ import { BuildingUseCases } from "../../application/usecase/building/building-us
 import { AuthUseCases } from "../../application/usecase/common/auth-usecase";
 import { RegisterUseCase } from "../../application/usecase/common/register-usecase";
 import { DocumentUseCases } from "../../application/usecase/document/document-usecase";
+import { ExpenseUseCases } from "../../application/usecase/expence/expense-usecase";
 import { FloorUseCases } from "../../application/usecase/floor/floor-usecase";
 import { BootstrapSuperAdminUseCase } from "../../application/usecase/system/bootstrap-super-admin.usecase";
 import { TenantUseCases } from "../../application/usecase/tenant/tenant-usecase";
@@ -11,11 +12,13 @@ import { AuthController } from "../../interface/controllers/auth-controller";
 import { BootstrapController } from "../../interface/controllers/bootstrap-controller";
 import { BuildingController } from "../../interface/controllers/building-controller";
 import { DocumentController } from "../../interface/controllers/document-controller";
+import { ExpenseController } from "../../interface/controllers/expense-controller";
 import { FloorController } from "../../interface/controllers/floor-controller";
 import { TenantController } from "../../interface/controllers/tenant-controller";
 import { AgreementRepository } from "../repository/agreement-repository";
 import { BuildingRepository } from "../repository/building-repository";
 import { DocumentRepository } from "../repository/document-repository";
+import { ExpenseRepository } from "../repository/expence-repository";
 import { FloorRepository } from "../repository/floor-repository";
 import { TenantRepository } from "../repository/tenant-repository";
 import { UserRepository } from "../repository/user-repository";
@@ -32,6 +35,7 @@ const documentRepository = new DocumentRepository();
 const agreementRepository = new AgreementRepository();
 const buildingRepo     = new BuildingRepository();
 const floorRepo        = new FloorRepository();
+const expenseRepo      = new ExpenseRepository();
 
 
 // ─── Services ─────────────────────────────────────────────────────────────────
@@ -55,6 +59,8 @@ const agreementUseCases = new AgreementUseCases(
 );
 const buildingUseCases  = new BuildingUseCases(buildingRepo);
 const floorUseCases     = new FloorUseCases(floorRepo, buildingRepo);
+const expenseUseCases       = new ExpenseUseCases(expenseRepo, rentPaymentRepo);
+
 
 // ─── Controllers ──────────────────────────────────────────────────────────────
 export const authController      = new AuthController(authUseCases, registerUseCase);
@@ -64,3 +70,4 @@ export const documentController  = new DocumentController(documentUseCases);
 export const agreementController = new AgreementController(agreementUseCases);
 export const buildingController  = new BuildingController(buildingUseCases);
 export const floorController     = new FloorController(floorUseCases);
+export const expenseController      = new ExpenseController(expenseUseCases);
