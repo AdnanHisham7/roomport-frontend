@@ -21,7 +21,7 @@ export class ExpenseController {
   };
 
   // ── GET /expenses/:id ──────────────────────────────────────────────────────
-  getById = async (req: Request, res: Response): Promise<Response> => {
+  getById = async (req: Request<{ id: string }>, res: Response): Promise<Response> => {
     try { return res.status(200).json({ data: await this.expenseUseCases.getById(req.params.id) }); }
     catch (e) { return this.err(res, e, 'Failed to fetch expense.'); }
   };
@@ -50,7 +50,7 @@ export class ExpenseController {
   };
 
   // ── PUT /expenses/:id ──────────────────────────────────────────────────────
-  update = async (req: Request, res: Response): Promise<Response> => {
+  update = async (req: Request<{ id: string }>, res: Response): Promise<Response> => {
     try {
       const expense = await this.expenseUseCases.update(req.params.id, req.body);
       return res.status(200).json({ message: 'Expense updated.', data: expense });
@@ -58,7 +58,7 @@ export class ExpenseController {
   };
 
   // ── DELETE /expenses/:id ───────────────────────────────────────────────────
-  delete = async (req: Request, res: Response): Promise<Response> => {
+  delete = async (req: Request<{ id: string }>, res: Response): Promise<Response> => {
     try {
       await this.expenseUseCases.delete(req.params.id);
       return res.status(200).json({ message: 'Expense deleted.' });
@@ -67,7 +67,7 @@ export class ExpenseController {
 
   // ── GET /expenses/tracker/:buildingId/summary ──────────────────────────────
   // The main expense tracker view — income vs expenses for any period
-  summary = async (req: Request, res: Response): Promise<Response> => {
+  summary = async (req: Request<{ buildingId: string }>, res: Response): Promise<Response> => {
     try {
       const { buildingId } = req.params;
       const { period = 'monthly', year, month, week } = req.query as Record<string, string>;
@@ -93,7 +93,7 @@ export class ExpenseController {
 
   // ── GET /expenses/tracker/:buildingId/range ────────────────────────────────
   // Custom date range query
-  getByDateRange = async (req: Request, res: Response): Promise<Response> => {
+  getByDateRange = async (req: Request<{ buildingId: string }>, res: Response): Promise<Response> => {
     try {
       const { buildingId } = req.params;
       const { from, to, category } = req.query as Record<string, string>;
