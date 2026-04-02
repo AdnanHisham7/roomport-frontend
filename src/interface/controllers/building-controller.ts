@@ -5,7 +5,7 @@ import type { BuildingStatus, BuildingType } from "../../domain/entities/Buildin
 import { AppError } from "../../shared/error/app-error";
 
 export class BuildingController {
-  constructor(private readonly uc: IBuildingUseCases) {}
+  constructor(private readonly uc: IBuildingUseCases) { }
 
   private static getSingleParam(value: string | string[] | undefined): string {
     return Array.isArray(value) ? value[0] ?? "" : value ?? "";
@@ -16,10 +16,29 @@ export class BuildingController {
     res: Response,
     next: NextFunction
   ): void => {
-    const { name, type, ownerId, totalUnits, totalFloors, location } = req.body;
+    const { name,
+      type,
+      ownerId,
+      totalUnits,
+      floors,
+      location,
+      amenities,
+      images,
+      documents,
+      description,
+      yearOfBuild,
+      sqft,
+      lift,
+      helipad,
+      nearAirport,
+      nearRailwayStation,
+      nearBusStand,
+      nearPark,
+      numberOfUnitsInFloor
+    } = req.body;
 
     const errors: string[] = [];
-
+    console.log(req.body)
     if (!name?.trim()) errors.push('name is required.');
     if (!type) {
       errors.push(
@@ -30,8 +49,8 @@ export class BuildingController {
     if (!totalUnits || isNaN(Number(totalUnits)) || Number(totalUnits) < 1) {
       errors.push('totalUnits must be >= 1.');
     }
-    if (!totalFloors || isNaN(Number(totalFloors)) || Number(totalFloors) < 1) {
-      errors.push('totalFloors must be >= 1.');
+    if (!Object.keys(floors).length || isNaN(Number(Object.keys(floors).length)) || Number(Object.keys(floors).length) < 1) {
+      errors.push('floors must be >= 1.');
     }
     if (!location?.address?.trim()) errors.push('location.address is required.');
     if (!location?.city?.trim()) errors.push('location.city is required.');
@@ -116,10 +135,48 @@ export class BuildingController {
       const payload: CreateBuildingDTO = {
         ...req.body,
         totalUnits: Number(req.body.totalUnits),
-        totalFloors: Number(req.body.totalFloors),
+        totalFloors: Number(Object.keys(req.body.floors).length),
       };
+      console.log(payload) 
 
       const data = await this.uc.create(payload);
+      
+      console.log(data)
+
+      let floorData: any[] = [];
+      if (Array.isArray(req.body.floors)) {
+        floorData = req.body.floors.map((floorItem: any, index: number) => {
+          if (typeof floorItem === 'object' && floorItem !== null) {
+            return {
+              buildingId: data._id,
+              floorNumber: Number(floorItem.floorNumber ?? index),
+              name: floorItem.name || `Floor ${floorItem.floorNumber ?? index}`,
+              totalUnits: Number(floorItem.totalUnits || floorItem.units || floorItem.numberOfUnits || 0),
+            };
+          } else {
+            return {
+              buildingId: data._id,
+              floorNumber: index,
+              name: `Floor ${index}`,
+              totalUnits: Number(floorItem),
+            };
+          }
+        });
+      } else {
+        floorData = Object.entries(req.body.floors).map(([key, units], index) => {
+          // If key is something like "Ground" or "Floor 1", parseInt will return NaN
+          const parsedKey = parseInt(key, 10);
+          const floorNum = isNaN(parsedKey) ? index : parsedKey;
+          return {
+            buildingId: data._id,
+            floorNumber: floorNum,
+            name: isNaN(parsedKey) ? key : `Floor ${floorNum}`,
+            totalUnits: Number(units),
+          };
+        });
+      }
+
+      await this.uc.createFloors(floorData);
 
       return res.status(201).json({
         message: 'Building created successfully.',

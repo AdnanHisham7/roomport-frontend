@@ -1,5 +1,7 @@
 import { IBuilding } from "../../../domain/entities/Building";
 import { IBuildingRepository } from "../../../domain/repository/building-repository-impl";
+import { IFloorUseCases } from "../../interface/floor/floor-usecase.impl";
+import { IBuildingUseCases } from "../../interface/building/building-usecase.impl";
 import { BadRequestError, NotFoundError } from "../../../shared/error/app-error";
 import { BuildingOccupancyStatsDTO, BuildingResponseDTO, CreateBuildingDTO, UpdateBuildingDTO } from "../../dtos/building/building.dto";
 
@@ -8,8 +10,17 @@ function toResponse(b: IBuilding): BuildingResponseDTO {
   return { _id: b._id!, name: b.name, type: b.type, status: b.status, location: b.location, ownerId: b.ownerId, managerId: b.managerId, totalUnits: b.totalUnits, totalFloors: b.totalFloors, sqft: b.sqft, lift: b.lift, helipad: b.helipad, nearAirport: b.nearAirport, nearRailwayStation: b.nearRailwayStation, nearBusStand: b.nearBusStand, nearPark: b.nearPark, amenities: b.amenities, images: b.images, documents: b.documents, description: b.description, yearOfBuild: b.yearOfBuild, createdAt: b.createdAt, updatedAt: b.updatedAt };
 }
 
-export class BuildingUseCases {
-  constructor(private readonly buildingRepo: IBuildingRepository) {}
+export class BuildingUseCases implements IBuildingUseCases {
+  constructor(
+    private readonly buildingRepo: IBuildingRepository,
+    private readonly floorUc: IFloorUseCases
+  ) {}
+
+  async createFloors(floorData: { buildingId: string; floorNumber: number; name: string; totalUnits: number; }[]): Promise<void> {
+    for (const data of floorData) {
+      await this.floorUc.create({ ...data, description: '' });
+    }
+  }
 
   async create(data: CreateBuildingDTO): Promise<BuildingResponseDTO> {
     if (data.totalUnits < 1)  throw new BadRequestError('totalUnits must be at least 1.');

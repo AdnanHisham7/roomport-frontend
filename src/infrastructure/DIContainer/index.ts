@@ -53,8 +53,8 @@ const agreementUseCases = new AgreementUseCases(
   emailService,
   pdfService
 );
-const buildingUseCases  = new BuildingUseCases(buildingRepo);
 const floorUseCases     = new FloorUseCases(floorRepo, buildingRepo);
+const buildingUseCases  = new BuildingUseCases(buildingRepo, floorUseCases);
 
 // ─── Controllers ──────────────────────────────────────────────────────────────
 export const authController      = new AuthController(authUseCases, registerUseCase);
