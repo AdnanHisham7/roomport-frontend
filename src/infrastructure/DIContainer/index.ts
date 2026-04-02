@@ -91,11 +91,10 @@ const handleWebhookUseCase = new HandleWebhookUseCase(stripeService, userReposit
 const unitUseCases = new UnitUseCases(unitRepository);
 const analyticsUseCase = new AnalyticsUseCase(analyticsRepository);
 const notificationUseCase = new NotificationUseCase(notificationRepository, emailService, twilioSmsService, userRepository);
-const buildingUseCases = new BuildingUseCases(buildingRepository);
 const floorUseCases = new FloorUseCases(floorRepository, buildingRepository);
+const buildingUseCases = new BuildingUseCases(buildingRepository, floorUseCases);
 const activityLogUseCase = new ActivityLogUsecaseImpl(activityLogRepository);
 const expenseUseCases       = new ExpenseUseCases(expenseRepo);
-
 
 // ─── Controllers ──────────────────────────────────────────────────────────────
 export const authController = new AuthController(authUseCases, registerUseCase);
