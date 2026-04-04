@@ -34,6 +34,25 @@ export class UserController {
     }
   };
 
+  createManager = async (req: Request, res: Response): Promise<Response> => {
+    try {
+      const adminId = req.user?.userId;
+      if (!adminId) {
+        return res.status(401).json({ message: 'Unauthorized access.' });
+      }
+
+      const data = req.body;
+      if (!data.email || !data.password || !data.first_name || !data.last_name) {
+          throw new AppError('Manager creation failed', 400, 'Missing required fields (email, password, first_name, last_name)');
+      }
+
+      const newManager = await this.userUseCase.createManager!(adminId, data);
+      return res.status(201).json({ message: 'Manager created successfully.', data: newManager });
+    } catch (error) {
+      return this.handleError(res, error, 'An error occurred while creating manager.');
+    }
+  };
+
   private handleError(res: Response, error: unknown, fallback: string): Response {
     if (error instanceof AppError) {
       return res.status(error.statusCode).json({

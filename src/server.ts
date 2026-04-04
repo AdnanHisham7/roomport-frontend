@@ -2,6 +2,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 import createApp from './app';
 import connectDB from './infrastructure/config/db';
+import { startRentReminderCron } from './infrastructure/cron/rent-reminder.cron';
 
 
 const PORT = process.env.PORT || 5000;
@@ -15,6 +16,8 @@ const startServer = async (): Promise<void> => {
     const server = app.listen(PORT, () => {
       console.log(`\n🚀  Server running on http://localhost:${PORT}`);
     });
+    
+    startRentReminderCron();
 
     process.on('SIGTERM', () => {
       console.log('SIGTERM received. Shutting down gracefully...');

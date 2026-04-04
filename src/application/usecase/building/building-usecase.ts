@@ -5,7 +5,8 @@ import { IBuildingUseCases } from "../../interface/building/building-usecase.imp
 import { BadRequestError, NotFoundError, PaymentRequiredError } from "../../../shared/error/app-error";
 import { ISubscriptionRepository } from "../../../domain/repository/subscription-repository-impl";
 import { BuildingOccupancyStatsDTO, BuildingResponseDTO, CreateBuildingDTO, UpdateBuildingDTO } from "../../dtos/building/building.dto";
-
+import { IActivityLogUsecase } from "../../usecase/activity-log/activity-log-usecase";
+import { ActivityLogAction, ActivityLogEntityType } from "../../../domain/entities/ActivityLog";
 
 function toResponse(b: IBuilding): BuildingResponseDTO {
   return { _id: b._id!, name: b.name, type: b.type, status: b.status, location: b.location, ownerId: b.ownerId, managerId: b.managerId, totalUnits: b.totalUnits, totalFloors: b.totalFloors, sqft: b.sqft, lift: b.lift, helipad: b.helipad, nearAirport: b.nearAirport, nearRailwayStation: b.nearRailwayStation, nearBusStand: b.nearBusStand, nearPark: b.nearPark, amenities: b.amenities, images: b.images, documents: b.documents, description: b.description, yearOfBuild: b.yearOfBuild, createdAt: b.createdAt, updatedAt: b.updatedAt };
@@ -15,7 +16,8 @@ export class BuildingUseCases implements IBuildingUseCases {
   constructor(
     private readonly buildingRepo: IBuildingRepository,
     private readonly floorUc: IFloorUseCases,
-    private readonly subscriptionRepo: ISubscriptionRepository
+    private readonly subscriptionRepo: ISubscriptionRepository,
+    private readonly activityLogUc: IActivityLogUsecase
   ) {}
 
   async createFloors(floorData: { buildingId: string; floorNumber: number; name: string; totalUnits: number; }[]): Promise<void> {
@@ -49,6 +51,16 @@ export class BuildingUseCases implements IBuildingUseCases {
     }
 
     const b = await this.buildingRepo.create({ ...data, lift: data.lift ?? false, helipad: data.helipad ?? false, status: 'active' });
+    
+    this.activityLogUc.logActivity({
+      action: ActivityLogAction.BUILDING_CREATED,
+      entityType: ActivityLogEntityType.BUILDING,
+      entityId: b._id,
+      buildingId: b._id,
+      userId: b.ownerId as any,
+      metadata: { name: b.name, totalUnits: b.totalUnits }
+    }).catch(console.error);
+
     return toResponse(b);
   }
 
@@ -63,14 +75,36 @@ export class BuildingUseCases implements IBuildingUseCases {
   }
 
   async update(id: string, data: UpdateBuildingDTO): Promise<BuildingResponseDTO> {
-    if (!await this.buildingRepo.existsById(id)) throw new NotFoundError('Building not found.');
+    const prev = await this.buildingRepo.findById(id);
+    if (!prev) throw new NotFoundError('Building not found.');
+
     const updated = await this.buildingRepo.update(id, data as any);
+
+    this.activityLogUc.logActivity({
+      action: ActivityLogAction.BUILDING_UPDATED,
+      entityType: ActivityLogEntityType.BUILDING,
+      entityId: updated!._id,
+      buildingId: updated!._id,
+      userId: updated!.ownerId as any,
+      metadata: { action: 'update', changes_keys: Object.keys(data) }
+    }).catch(console.error);
+
     return toResponse(updated!);
   }
 
   async delete(id: string): Promise<void> {
-    if (!await this.buildingRepo.existsById(id)) throw new NotFoundError('Building not found.');
+    const prev = await this.buildingRepo.findById(id);
+    if (!prev) throw new NotFoundError('Building not found.');
+
     await this.buildingRepo.delete(id);
+
+    this.activityLogUc.logActivity({
+      action: ActivityLogAction.BUILDING_DELETED,
+      entityType: ActivityLogEntityType.BUILDING,
+      entityId: id,
+      buildingId: id,
+      userId: prev.ownerId as any,
+    }).catch(console.error);
   }
 
   async getOccupancyStats(ownerId?: string): Promise<BuildingOccupancyStatsDTO> {

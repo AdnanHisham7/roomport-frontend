@@ -8,12 +8,13 @@ import systemRoutes from './interface/routers/bootstrap-router';
 import { createTenantRouter } from './interface/routers/tenant-router';
 import { createDocumentRouter } from './interface/routers/document-router';
 import { globalErrorHandler } from './interface/middleware/errorhandle-middleware';
-import { documentController, tenantController, agreementController, buildingController, floorController } from './infrastructure/DIContainer';
+import { documentController, tenantController, agreementController, buildingController, floorController, expenseController } from './infrastructure/DIContainer';
 import { createAgreementRouter } from './interface/routers/agreement-router';
 import { createPaymentRouter } from './interface/routers/payment-router';
 import { paymentController } from './infrastructure/DIContainer';
 import { createUnitRouter } from './interface/routers/unit-router';
 import { unitController } from './infrastructure/DIContainer';
+import { createExpenseRouter } from './interface/routers/expense-router';
 
 import { createBuildingRouter } from './interface/routers/building-router';
 import { createUserRouter } from './interface/routers/user-router';
@@ -82,6 +83,7 @@ const createApp = (): Application => {
   app.use('/api/v1/agreements', createAgreementRouter(agreementController));
   app.use('/api/v1/payments', createPaymentRouter(paymentController));
   app.use('/api/v1/units', createUnitRouter(unitController));
+  app.use('/api/v1/expenses', createExpenseRouter(expenseController));
 
   app.use('/api/v1/buildings',     createBuildingRouter(buildingController, floorController));
   app.use('/api/v1/users',         createUserRouter(userController));

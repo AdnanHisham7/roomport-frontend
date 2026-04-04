@@ -32,6 +32,7 @@ export interface UpdateTenantDTO {
   rentAmount?:       number;
   dueDate?:          number;
   vacateDate?:       Date;
+  paidAt?:           Date;
   terms?:            string;
 }
 
@@ -53,6 +54,7 @@ export interface TenantResponseDTO {
   dueDate:           number;
   moveInDate?:       Date;
   vacateDate?:       Date;
+  paidAt?:           Date;
   terms?:            string;
   createdAt?:        Date;
   updatedAt?:        Date;

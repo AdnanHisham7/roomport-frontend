@@ -77,7 +77,6 @@ const userUseCase = new UserUseCase(userRepository);
 const authUseCases = new AuthUseCases(userRepository, jwtService, emailService, otpService);
 const registerUseCase = new RegisterUseCase(userRepository, emailService, otpService);
 const bootstrapUseCase = new BootstrapSuperAdminUseCase(userRepository);
-const tenantUseCases = new TenantUseCases(tenantRepository);
 const documentUseCases = new DocumentUseCases(documentRepository);
 const agreementUseCases = new AgreementUseCases(
   agreementRepository,
@@ -92,9 +91,36 @@ const unitUseCases = new UnitUseCases(unitRepository, subscriptionRepository, bu
 const analyticsUseCase = new AnalyticsUseCase(analyticsRepository);
 const notificationUseCase = new NotificationUseCase(notificationRepository, emailService, twilioSmsService, userRepository);
 const floorUseCases = new FloorUseCases(floorRepository, buildingRepository, unitUseCases, subscriptionRepository);
-const buildingUseCases = new BuildingUseCases(buildingRepository, floorUseCases, subscriptionRepository);
 const activityLogUseCase = new ActivityLogUsecaseImpl(activityLogRepository);
-const expenseUseCases       = new ExpenseUseCases(expenseRepo);
+const buildingUseCases = new BuildingUseCases(buildingRepository, floorUseCases, subscriptionRepository, activityLogUseCase);
+const tenantUseCases = new TenantUseCases(tenantRepository, unitRepository, activityLogUseCase);
+class TenantPaymentAdapter {
+  constructor(private readonly tenantRepo: typeof tenantRepository) {}
+  async findAll(filter?: { buildingId?: string }): Promise<any[]> {
+    const tenants = await this.tenantRepo.findAll(filter as any);
+    const today = new Date();
+    return tenants.map(t => {
+      let paymentDueDate;
+      if (typeof t.dueDate === 'number') {
+        paymentDueDate = new Date(today.getFullYear(), today.getMonth(), t.dueDate, 0, 0, 0);
+      } else {
+        paymentDueDate = t.dueDate ? new Date(t.dueDate as any) : new Date();
+      }
+
+      const hasPaidThisMonth = t.paidAt && t.paidAt.getMonth() === today.getMonth() && t.paidAt.getFullYear() === today.getFullYear();
+      
+      return {
+        amount: t.rentAmount,
+        status: hasPaidThisMonth ? 'completed' : 'pending',
+        type: 'rent',
+        paidAt: t.paidAt,
+        dueDate: paymentDueDate
+      };
+    });
+  }
+}
+
+const expenseUseCases = new ExpenseUseCases(expenseRepo, new TenantPaymentAdapter(tenantRepository) as any);
 
 // ─── Controllers ──────────────────────────────────────────────────────────────
 export const authController = new AuthController(authUseCases, registerUseCase);

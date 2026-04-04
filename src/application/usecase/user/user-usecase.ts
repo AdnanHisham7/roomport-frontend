@@ -29,4 +29,33 @@ export class UserUseCase implements IUserUseCase {
     }
     return updatedUser;
   }
+
+  async createManager(adminId: string, data: any): Promise<IUser> {
+    const admin = await this.userRepository.findById(adminId);
+    if (!admin || (admin.role !== 'admin' && admin.role !== 'super_admin')) {
+        throw new AppError('Unauthorized', 403, 'Only admins explicitly can create managers');
+    }
+
+    const existingUser = await this.userRepository.findByEmail(data.email);
+    if(existingUser) {
+        throw new AppError('Email already in use', 400, 'A user with this email already exists.');
+    }
+
+    // Hash the generic password so managers can immediately login via email/password natively
+    const bcrypt = require('bcryptjs');
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(data.password, salt);
+
+    const newUser = await this.userRepository.create({
+        ...data,
+        password: hashedPassword,
+        role: 'manager',
+        status: 'active',
+        email_verified: true,
+        phone_verified: false,
+        ownerId: adminId
+    } as any);
+
+    return newUser;
+  }
 }
