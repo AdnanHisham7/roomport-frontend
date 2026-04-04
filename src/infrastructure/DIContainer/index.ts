@@ -88,11 +88,11 @@ const agreementUseCases = new AgreementUseCases(
 );
 const createCheckoutSessionUseCase = new CreateCheckoutSessionUseCase(stripeService, userRepository, subscriptionRepository);
 const handleWebhookUseCase = new HandleWebhookUseCase(stripeService, userRepository, subscriptionRepository, emailService);
-const unitUseCases = new UnitUseCases(unitRepository);
+const unitUseCases = new UnitUseCases(unitRepository, subscriptionRepository, buildingRepository);
 const analyticsUseCase = new AnalyticsUseCase(analyticsRepository);
 const notificationUseCase = new NotificationUseCase(notificationRepository, emailService, twilioSmsService, userRepository);
-const floorUseCases = new FloorUseCases(floorRepository, buildingRepository);
-const buildingUseCases = new BuildingUseCases(buildingRepository, floorUseCases);
+const floorUseCases = new FloorUseCases(floorRepository, buildingRepository, unitUseCases, subscriptionRepository);
+const buildingUseCases = new BuildingUseCases(buildingRepository, floorUseCases, subscriptionRepository);
 const activityLogUseCase = new ActivityLogUsecaseImpl(activityLogRepository);
 const expenseUseCases       = new ExpenseUseCases(expenseRepo);
 

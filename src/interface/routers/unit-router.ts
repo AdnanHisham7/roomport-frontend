@@ -6,6 +6,7 @@ export const createUnitRouter = (unitController: UnitController): Router => {
 
   router.post("/", (req, res, next) => unitController.createUnit(req, res, next));
   router.get("/", (req, res, next) => unitController.getAllUnits(req, res, next));
+  router.put("/bulk-update", (req, res, next) => unitController.bulkUpdateUnits(req, res, next));
   router.get("/:id", (req, res, next) => unitController.getUnitById(req, res, next));
   router.patch("/:id", (req, res, next) => unitController.updateUnit(req, res, next));
   router.delete("/:id", (req, res, next) => unitController.deleteUnit(req, res, next));

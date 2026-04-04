@@ -5,5 +5,6 @@ export interface IUnitUseCases {
   getAll(filter?: { buildingId?: string; status?: string; isOccupied?: boolean }): Promise<UnitResponseDTO[]>;
   getById(id: string): Promise<UnitResponseDTO>;
   update(id: string, data: UpdateUnitDTO): Promise<UnitResponseDTO>;
+  bulkUpdate(unitIds: string[], data: UpdateUnitDTO): Promise<UnitResponseDTO[]>;
   delete(id: string): Promise<void>;
 }

@@ -1,9 +1,11 @@
 import { IFloor } from "../../../domain/entities/Floor";
 import { IBuildingRepository } from "../../../domain/repository/building-repository-impl";
 import { IFloorRepository } from "../../../domain/repository/floor-repository-impl";
-import { BadRequestError, NotFoundError } from "../../../shared/error/app-error";
+import { BadRequestError, NotFoundError, PaymentRequiredError } from "../../../shared/error/app-error";
 import { CreateFloorDTO, FloorResponseDTO, UpdateFloorDTO } from "../../dtos/floor/floor.dto";
 import { IFloorUseCases } from "../../interface/floor/floor-usecase.impl";
+import { IUnitUseCases } from "../../interface/unit/unit-usecase-impl";
+import { ISubscriptionRepository } from "../../../domain/repository/subscription-repository-impl";
 
 
 function toResponse(f: IFloor): FloorResponseDTO {
@@ -24,6 +26,8 @@ export class FloorUseCases implements IFloorUseCases {
   constructor(
     private readonly floorRepo:    IFloorRepository,
     private readonly buildingRepo: IBuildingRepository,
+    private readonly unitUc:       IUnitUseCases,
+    private readonly subscriptionRepo: ISubscriptionRepository
   ) {}
 
   // ── CREATE ────────────────────────────────────────────────────────────────────
@@ -32,6 +36,19 @@ export class FloorUseCases implements IFloorUseCases {
     const building = await this.buildingRepo.findById(data.buildingId);
     if (!building) {
       throw new NotFoundError('Building not found.', 'Check the buildingId and try again.');
+    }
+    
+    // Subscription Check
+    const subscription = await this.subscriptionRepo.findByUserId(building.ownerId);
+    if (!subscription || (subscription.status !== 'active' && subscription.status !== 'paid')) {
+      throw new PaymentRequiredError('Active subscription required to add floors or units.', 'Please subscribe to a plan.');
+    }
+    const userBuildings = await this.buildingRepo.findByOwnerId(building.ownerId);
+    const currentUnitCount = userBuildings.reduce((sum, b) => sum + b.totalUnits, 0);
+
+    // Building unit counts cap their maximum allowed units overall across their subscription scope.
+    if (currentUnitCount > subscription.numberOfUnits) {
+       throw new PaymentRequiredError('Unit limit exceeded.', 'Please upgrade your plan unit limits to add this floor and its units.');
     }
 
     // Validate floor number doesn't exceed totalFloors
@@ -54,6 +71,24 @@ export class FloorUseCases implements IFloorUseCases {
     }
 
     const floor = await this.floorRepo.create({ ...data, status: 'active' });
+
+    // Generate total units for this floor
+    const createUnitsPromises = [];
+    for (let i = 1; i <= floor.totalUnits; i++) {
+      const unitNumber = `${floor.floorNumber}${i.toString().padStart(2, '0')}`;
+      createUnitsPromises.push(
+        this.unitUc.create({
+          unitNumber,
+          floorNumber: floor.floorNumber.toString(),
+          buildingId: floor.buildingId,
+          rentAmount: 0,
+          bedrooms: 1,
+          bathrooms: 1,
+        })
+      );
+    }
+    await Promise.all(createUnitsPromises);
+
     return toResponse(floor);
   }
 

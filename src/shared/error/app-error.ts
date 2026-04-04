@@ -41,3 +41,9 @@ export class ForbiddenError extends AppError {
     super(message, 403, suggestion);
   }
 }
+
+export class PaymentRequiredError extends AppError {
+  constructor(message = 'Payment Required', suggestion = 'Please upgrade your subscription or pay for additional resources.') {
+    super(message, 402, suggestion);
+  }
+}

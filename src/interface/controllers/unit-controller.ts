@@ -46,6 +46,20 @@ export class UnitController {
     }
   }
 
+  async bulkUpdateUnits(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { unitIds, updateData } = req.body;
+      if (!Array.isArray(unitIds) || unitIds.length === 0) {
+        res.status(400).json({ success: false, message: "unitIds array is required and must not be empty" });
+        return;
+      }
+      const units = await this.unitUseCases.bulkUpdate(unitIds, updateData);
+      res.status(200).json({ success: true, message: "Units updated successfully", data: units });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async deleteUnit(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       await this.unitUseCases.delete(req.params.id as string);

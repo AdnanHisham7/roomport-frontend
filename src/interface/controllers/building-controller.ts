@@ -130,14 +130,25 @@ export class BuildingController {
     }
   };
 
-  create = async (req: Request<{}, {}, CreateBuildingDTO>, res: Response): Promise<Response> => {
+  create = async (req: Request<{}, {}, CreateBuildingDTO & { floors: any }>, res: Response): Promise<Response> => {
     try {
+      let calculatedTotalUnits = 0;
+      if (req.body.floors) {
+        if (Array.isArray(req.body.floors)) {
+          calculatedTotalUnits = req.body.floors.reduce((sum: number, f: any) => sum + Number(f.totalUnits || f.units || f.numberOfUnits || (typeof f !== 'object' ? f : 0)), 0);
+        } else {
+          calculatedTotalUnits = Object.values(req.body.floors).reduce((sum: number, u: any) => sum + Number(u), 0);
+        }
+      }
+
+      const requestedTotalUnits = Number(req.body.totalUnits) || 0;
+      
       const payload: CreateBuildingDTO = {
         ...req.body,
-        totalUnits: Number(req.body.totalUnits),
-        totalFloors: Number(Object.keys(req.body.floors).length),
+        totalUnits: Math.max(requestedTotalUnits, calculatedTotalUnits),
+        totalFloors: Number(Object.keys(req.body.floors || {}).length),
       };
-      console.log(payload) 
+      console.log('Payload units evaluated as:', payload.totalUnits); 
 
       const data = await this.uc.create(payload);
       
