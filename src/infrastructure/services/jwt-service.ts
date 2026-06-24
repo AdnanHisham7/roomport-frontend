@@ -12,8 +12,8 @@ export class JwtService implements IJwtService {
   constructor() {
     this.accessSecret  = process.env.JWT_ACCESS_SECRET  || 'access_secret_changeme';
     this.refreshSecret = process.env.JWT_REFRESH_SECRET || 'refresh_secret_changeme';
-    this.accessExpiry  = process.env.JWT_ACCESS_EXPIRY  || '15m';
-    this.refreshExpiry = process.env.JWT_REFRESH_EXPIRY || '7d';
+    this.accessExpiry  = process.env.JWT_ACCESS_EXPIRES_IN  || process.env.JWT_ACCESS_EXPIRY  || '15m';
+    this.refreshExpiry = process.env.JWT_REFRESH_EXPIRES_IN || process.env.JWT_REFRESH_EXPIRY || '7d';
   }
 
   generateAccessToken(payload: TokenPayload): string {
