@@ -6,9 +6,8 @@ export class NotificationController {
 
   async getUserNotifications(req: Request, res: Response): Promise<void> {
     try {
-      // Assuming req.user is populated by some auth middleware
-      const userId = (req as any).user?.id || (req as any).user?._id; 
-      
+      const userId = req.user?.userId;
+
       if (!userId) {
         res.status(401).json({ success: false, message: 'Unauthorized' });
         return;
@@ -22,11 +21,26 @@ export class NotificationController {
     }
   }
 
+  async getUnreadCount(req: Request, res: Response): Promise<void> {
+    try {
+      const userId = req.user?.userId;
+      if (!userId) {
+        res.status(401).json({ success: false, message: 'Unauthorized' });
+        return;
+      }
+      const count = await this.notificationUseCase.getUnreadCount(userId);
+      res.status(200).json({ success: true, data: { count } });
+    } catch (error) {
+      console.error('Error fetching unread count:', error);
+      res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+  }
+
   async markAsRead(req: Request, res: Response): Promise<void> {
     try {
       const id = req.params.id as string;
       const notification = await this.notificationUseCase.markAsRead(id);
-      
+
       if (!notification) {
         res.status(404).json({ success: false, message: 'Notification not found' });
         return;
@@ -41,7 +55,7 @@ export class NotificationController {
 
   async markAllAsRead(req: Request, res: Response): Promise<void> {
     try {
-      const userId = (req as any).user?.id || (req as any).user?._id;
+      const userId = req.user?.userId;
 
       if (!userId) {
         res.status(401).json({ success: false, message: 'Unauthorized' });
@@ -58,14 +72,14 @@ export class NotificationController {
 
   async sendTestNotification(req: Request, res: Response): Promise<void> {
     try {
-      const userId = (req as any).user?.id || (req as any).user?._id;
+      const userId = req.user?.userId;
       if (!userId) {
         res.status(401).json({ success: false, message: 'Unauthorized' });
         return;
       }
-      
+
       const { title, message, notificationType, channel, buildingId, tenantId } = req.body;
-      
+
       await this.notificationUseCase.sendNotification({
         userId,
         title,

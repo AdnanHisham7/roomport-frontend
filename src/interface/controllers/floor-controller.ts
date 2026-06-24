@@ -50,7 +50,7 @@ export class FloorController {
         name:        name.trim(),
         totalUnits:  Number(totalUnits),
         description,
-      });
+      }, req.user!.userId, req.user!.role);
       return res.status(201).json({ message: 'Floor created.', data: floor });
     } catch (err) { return this.handleError(res, err, 'Failed to create floor.'); }
   };
@@ -58,7 +58,7 @@ export class FloorController {
   // ── PUT /floors/:id ────────────────────────────────────────────────────────
   update = async (req: Request<{ id: string }, {}, UpdateFloorDTO>, res: Response): Promise<Response> => {
     try {
-      const floor = await this.floorUseCases.update(FloorController.getSingleParam(req.params.id), req.body);
+      const floor = await this.floorUseCases.update(FloorController.getSingleParam(req.params.id), req.body, req.user!.userId, req.user!.role);
       return res.status(200).json({ message: 'Floor updated.', data: floor });
     } catch (err) { return this.handleError(res, err, 'Failed to update floor.'); }
   };
@@ -66,7 +66,7 @@ export class FloorController {
   // ── DELETE /floors/:id ─────────────────────────────────────────────────────
   delete = async (req: Request<{ id: string }>, res: Response): Promise<Response> => {
     try {
-      await this.floorUseCases.delete(FloorController.getSingleParam(req.params.id));
+      await this.floorUseCases.delete(FloorController.getSingleParam(req.params.id), req.user!.userId, req.user!.role);
       return res.status(200).json({ message: 'Floor deleted.' });
     } catch (err) { return this.handleError(res, err, 'Failed to delete floor.'); }
   };

@@ -39,7 +39,7 @@ export class UnitController {
 
   async updateUnit(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const unit = await this.unitUseCases.update(req.params.id as string, req.body);
+      const unit = await this.unitUseCases.update(req.params.id as string, req.body, req.user!.userId, req.user!.role);
       res.status(200).json({ success: true, data: unit });
     } catch (error) {
       next(error);
@@ -62,7 +62,7 @@ export class UnitController {
 
   async deleteUnit(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      await this.unitUseCases.delete(req.params.id as string);
+      await this.unitUseCases.delete(req.params.id as string, req.user!.userId, req.user!.role);
       res.status(200).json({ success: true, message: "Unit deleted successfully" });
     } catch (error) {
       next(error);
