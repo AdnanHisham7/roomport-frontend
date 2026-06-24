@@ -28,6 +28,12 @@ const UserSchema = new Schema<IUserDocument>(
       ref:     'Building',
       default: null,
     } as any,
+    ownerId: {
+      type:    Schema.Types.ObjectId,
+      ref:     'User',
+      default: null,
+      index:   true,
+    } as any,
     profile_image:  { type: String, default: null },
     lastLoginAt:    { type: Date,   default: null },
     refresh_token:  { type: String, default: null },

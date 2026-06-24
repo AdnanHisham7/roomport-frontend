@@ -40,6 +40,9 @@ const BuildingSchema = new Schema<IBuildingDocument>(
     documents:   { type: [Schema.Types.ObjectId], ref: 'Document', default: [] } as any,
     description: { type: String, default: null, trim: true },
     yearOfBuild: { type: String, default: null, trim: true },
+    isPublished: { type: Boolean, default: true, index: true },
+    isFeatured:  { type: Boolean, default: false, index: true },
+    viewCount:   { type: Number, default: 0 },
   },
   { timestamps: true }
 );
