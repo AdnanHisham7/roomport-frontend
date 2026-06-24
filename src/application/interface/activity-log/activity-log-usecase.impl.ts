@@ -13,6 +13,12 @@ export class ActivityLogUsecaseImpl implements IActivityLogUsecase {
     return this.activityLogRepository.findAll(filter);
   }
 
+  async getActivitiesPaginated(filter: Partial<IActivityLog> | undefined, page: number, limit: number) {
+    const skip = (page - 1) * limit;
+    const { data, total } = await this.activityLogRepository.findAllPaginated(filter, skip, limit);
+    return { data, total, page, limit };
+  }
+
   async getActivityById(id: string): Promise<IActivityLog | null> {
     return this.activityLogRepository.findById(id);
   }
