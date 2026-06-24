@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from 'express';
 import { AppError } from '../../shared/error/app-error';
+import { MulterError } from 'multer';
 
 export const globalErrorHandler = (
   error: Error,
@@ -14,6 +15,14 @@ export const globalErrorHandler = (
       message:    error.message,
       suggestion: error.suggestion,
     });
+    return;
+  }
+
+  if (error instanceof MulterError) {
+    const message = error.code === 'LIMIT_FILE_SIZE'
+      ? 'File is too large. Maximum size is 5MB.'
+      : error.message;
+    res.status(400).json({ message, suggestion: 'Choose a smaller or differently-formatted file.' });
     return;
   }
 
