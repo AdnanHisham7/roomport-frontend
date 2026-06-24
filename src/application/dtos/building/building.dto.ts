@@ -17,8 +17,10 @@ export interface CreateBuildingDTO {
   nearPark?:           string;
   amenities?:    string[];
   images?:       string[];
+  documents?:    string[];
   description?:  string;
   yearOfBuild?:  string;
+  isPublished?:  boolean;
 }
 
 export interface UpdateBuildingDTO {
@@ -38,8 +40,11 @@ export interface UpdateBuildingDTO {
   nearPark?:           string;
   amenities?:    string[];
   images?:       string[];
+  documents?:    string[];
   description?:  string;
   yearOfBuild?:  string;
+  isPublished?:  boolean;
+  isFeatured?:   boolean;
 }
 
 export interface BuildingResponseDTO {
@@ -64,6 +69,9 @@ export interface BuildingResponseDTO {
   documents?:    string[];
   description?:  string;
   yearOfBuild?:  string;
+  isPublished:   boolean;
+  isFeatured:    boolean;
+  viewCount?:    number;
   createdAt?:    Date;
   updatedAt?:    Date;
 }

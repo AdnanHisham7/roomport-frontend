@@ -12,7 +12,11 @@ export const createUserRouter = (userController: UserController): Router => {
   router.get('/profile', userController.getProfile);
   router.put('/profile', userController.updateProfile);
   router.patch('/profile', userController.updateProfile);
+
   router.post('/manager', authorize(UserRole.SUPER_ADMIN, UserRole.ADMIN), userController.createManager);
+  router.get('/manager', authorize(UserRole.SUPER_ADMIN, UserRole.ADMIN), userController.getMyManagers);
+  router.patch('/manager/:id/status', authorize(UserRole.SUPER_ADMIN, UserRole.ADMIN), userController.updateManagerStatus);
+  router.delete('/manager/:id', authorize(UserRole.SUPER_ADMIN, UserRole.ADMIN), userController.deleteManager);
 
   return router;
 };

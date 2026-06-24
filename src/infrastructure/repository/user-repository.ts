@@ -1,5 +1,5 @@
 import type { IUser } from '../../domain/entities/User';
-import type { IUserRepository } from '../../domain/repository/user-repository-impl';
+import type { IUserRepository, UserListFilter } from '../../domain/repository/user-repository-impl';
 import { UserModel } from '../db/model/user-model';
 
 export class UserRepository implements IUserRepository {
@@ -14,8 +14,22 @@ export class UserRepository implements IUserRepository {
       ...obj,
       _id:            this.toStringId(obj),
       building_id:    obj.building_id?.toString()    ?? undefined,
+      ownerId:        obj.ownerId?.toString()         ?? undefined,
       subscriptionId: obj.subscriptionId?.toString() ?? undefined,
     };
+  }
+
+  private buildQuery(filter?: UserListFilter): Record<string, any> {
+    const query: Record<string, any> = {};
+    if (!filter) return query;
+    if (filter.role)    query.role = filter.role;
+    if (filter.status)  query.status = filter.status;
+    if (filter.ownerId) query.ownerId = filter.ownerId;
+    if (filter.search) {
+      const re = new RegExp(filter.search.trim(), 'i');
+      query.$or = [{ email: re }, { first_name: re }, { last_name: re }];
+    }
+    return query;
   }
 
   // ── findByEmail ──────────────────────────────────────────────────────────
@@ -35,6 +49,27 @@ export class UserRepository implements IUserRepository {
   // ── findAll ──────────────────────────────────────────────────────────────
   async findAll(): Promise<IUser[]> {
     const docs = await UserModel.find().lean();
+    return docs.map((d) => this.toEntity(d));
+  }
+
+  // ── findAllPaginated ─────────────────────────────────────────────────────
+  async findAllPaginated(filter: UserListFilter, skip: number, limit: number): Promise<{ data: IUser[]; total: number }> {
+    const query = this.buildQuery(filter);
+    const [docs, total] = await Promise.all([
+      UserModel.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+      UserModel.countDocuments(query),
+    ]);
+    return { data: docs.map((d) => this.toEntity(d)), total };
+  }
+
+  // ── countAll ─────────────────────────────────────────────────────────────
+  async countAll(filter?: UserListFilter): Promise<number> {
+    return UserModel.countDocuments(this.buildQuery(filter));
+  }
+
+  // ── findByOwnerId ────────────────────────────────────────────────────────
+  async findByOwnerId(ownerId: string): Promise<IUser[]> {
+    const docs = await UserModel.find({ ownerId }).lean();
     return docs.map((d) => this.toEntity(d));
   }
 
@@ -93,5 +128,11 @@ export class UserRepository implements IUserRepository {
       .lean();
     if (!doc) return null;
     return this.toEntity(doc);
+  }
+
+  // ── delete ────────────────────────────────────────────────────────────────
+  async delete(userId: string): Promise<boolean> {
+    const result = await UserModel.findByIdAndDelete(userId);
+    return !!result;
   }
 }

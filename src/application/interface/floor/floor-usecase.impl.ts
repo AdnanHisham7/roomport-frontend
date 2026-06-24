@@ -2,9 +2,9 @@ import { CreateFloorDTO, FloorResponseDTO, UpdateFloorDTO } from "../../dtos/flo
 
 
 export interface IFloorUseCases {
-  create(data: CreateFloorDTO): Promise<FloorResponseDTO>;
+  create(data: CreateFloorDTO, requesterId?: string, requesterRole?: string): Promise<FloorResponseDTO>;
   getByBuilding(buildingId: string): Promise<FloorResponseDTO[]>;
   getById(id: string): Promise<FloorResponseDTO>;
-  update(id: string, data: UpdateFloorDTO): Promise<FloorResponseDTO>;
-  delete(id: string): Promise<void>;
+  update(id: string, data: UpdateFloorDTO, requesterId?: string, requesterRole?: string): Promise<FloorResponseDTO>;
+  delete(id: string, requesterId?: string, requesterRole?: string): Promise<void>;
 }

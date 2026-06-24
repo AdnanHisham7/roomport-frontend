@@ -7,17 +7,20 @@ export class EmailService implements IEmailService {
 
   constructor() {
     this.transporter = nodemailer.createTransport({
-      host:   process.env.SMTP_HOST  || 'smtp.gmail.com',
-      port:   Number(process.env.SMTP_PORT) || 587,
+      host: process.env.SMTP_HOST || "smtp.gmail.com",
+      port: Number(process.env.SMTP_PORT) || 587,
       secure: false,
       auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+      tls: {
+        rejectUnauthorized: false,
+      },
     });
   }
 
   private from(): string {
-    return `"${process.env.APP_NAME || 'Brift'}" <${process.env.SMTP_USER}>`;
+    return process.env.SMTP_USER || '';
   }
-
+  
   // ── Generic OTP email (auth flows) ─────────────────────────────────────────
   async sendOtpEmail(to: string, otp: string, purpose: string): Promise<void> {
     const { subject, body } = this.buildOtpContent(otp, purpose);

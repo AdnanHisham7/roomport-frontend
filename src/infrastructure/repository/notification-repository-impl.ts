@@ -31,6 +31,10 @@ export class NotificationRepositoryImpl implements INotificationRepository {
     await NotificationModel.updateMany({ userId }, { isRead: true, readAt: new Date() });
   }
 
+  async countUnread(userId: string): Promise<number> {
+    return NotificationModel.countDocuments({ userId, isRead: false });
+  }
+
   private mapToEntity(doc: any): Notification {
     return new Notification(
       doc._id.toString(),

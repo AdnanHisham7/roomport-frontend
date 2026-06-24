@@ -2,10 +2,14 @@ import type { NextFunction, Request, RequestHandler, Response } from "express";
 import { IBuildingUseCases } from "../../application/interface/building/building-usecase.impl";
 import type { CreateBuildingDTO, UpdateBuildingDTO } from "../../application/dtos/building/building.dto";
 import type { BuildingStatus, BuildingType } from "../../domain/entities/Building";
-import { AppError } from "../../shared/error/app-error";
+import { AppError, BadRequestError, ForbiddenError } from "../../shared/error/app-error";
+import { IUserRepository } from "../../domain/repository/user-repository-impl";
 
 export class BuildingController {
-  constructor(private readonly uc: IBuildingUseCases) { }
+  constructor(
+    private readonly uc: IBuildingUseCases,
+    private readonly userRepo: IUserRepository
+  ) { }
 
   private static getSingleParam(value: string | string[] | undefined): string {
     return Array.isArray(value) ? value[0] ?? "" : value ?? "";
@@ -18,38 +22,22 @@ export class BuildingController {
   ): void => {
     const { name,
       type,
-      ownerId,
       totalUnits,
       floors,
       location,
-      amenities,
-      images,
-      documents,
-      description,
-      yearOfBuild,
-      sqft,
-      lift,
-      helipad,
-      nearAirport,
-      nearRailwayStation,
-      nearBusStand,
-      nearPark,
-      numberOfUnitsInFloor
     } = req.body;
 
     const errors: string[] = [];
-    console.log(req.body)
     if (!name?.trim()) errors.push('name is required.');
     if (!type) {
       errors.push(
         'type is required (residential, commercial, mixed, industrial).'
       );
     }
-    if (!ownerId?.trim()) errors.push('ownerId is required.');
     if (!totalUnits || isNaN(Number(totalUnits)) || Number(totalUnits) < 1) {
       errors.push('totalUnits must be >= 1.');
     }
-    if (!Object.keys(floors).length || isNaN(Number(Object.keys(floors).length)) || Number(Object.keys(floors).length) < 1) {
+    if (!floors || !Object.keys(floors).length || isNaN(Number(Object.keys(floors).length)) || Number(Object.keys(floors).length) < 1) {
       errors.push('floors must be >= 1.');
     }
     if (!location?.address?.trim()) errors.push('location.address is required.');
@@ -86,9 +74,30 @@ export class BuildingController {
     });
   }
 
+  /** Resolves the (ownerId, managerId) pair for a building this requester is allowed to act as. */
+  private async resolveOwnership(req: Request): Promise<{ ownerId: string; managerId?: string }> {
+    const user = req.user!;
+    if (user.role === 'admin') {
+      return { ownerId: user.userId };
+    }
+    if (user.role === 'manager') {
+      const manager = await this.userRepo.findById(user.userId);
+      if (!manager?.ownerId) {
+        throw new ForbiddenError('This manager account is not linked to a builder.', 'Contact your admin to fix your account setup.');
+      }
+      return { ownerId: manager.ownerId, managerId: user.userId };
+    }
+    // super_admin — must explicitly say whose building this is
+    if (!req.body.ownerId) {
+      throw new BadRequestError('ownerId is required.', 'Specify which builder this building belongs to.');
+    }
+    return { ownerId: req.body.ownerId, managerId: req.body.managerId };
+  }
+
   getOccupancyStats = async (req: Request, res: Response): Promise<Response> => {
     try {
-      const ownerId = req.query.ownerId as string;
+      const user = req.user!;
+      const ownerId = user.role === 'super_admin' ? (req.query.ownerId as string | undefined) : (user.role === 'admin' ? user.userId : undefined);
       const data = await this.uc.getOccupancyStats(ownerId);
 
       return res.status(200).json({ data });
@@ -99,19 +108,23 @@ export class BuildingController {
 
   getAll = async (req: Request, res: Response): Promise<Response> => {
     try {
-      const { ownerId, managerId, status, type } = req.query as {
-        ownerId?: string;
-        managerId?: string;
-        status?: BuildingStatus;
-        type?: BuildingType;
-      };
+      const user = req.user!;
+      const { status, type } = req.query as { status?: BuildingStatus; type?: BuildingType };
 
-      const data = await this.uc.getAll({
-        ownerId,
-        managerId,
-        status,
-        type,
-      });
+      let ownerId: string | undefined;
+      let managerId: string | undefined;
+
+      if (user.role === 'admin') {
+        ownerId = user.userId;
+      } else if (user.role === 'manager') {
+        managerId = user.userId;
+      } else {
+        // super_admin can optionally filter
+        ownerId = req.query.ownerId as string | undefined;
+        managerId = req.query.managerId as string | undefined;
+      }
+
+      const data = await this.uc.getAll({ ownerId, managerId, status, type });
 
       return res.status(200).json({ data });
     } catch (error) {
@@ -132,6 +145,8 @@ export class BuildingController {
 
   create = async (req: Request<{}, {}, CreateBuildingDTO & { floors: any }>, res: Response): Promise<Response> => {
     try {
+      const { ownerId, managerId } = await this.resolveOwnership(req);
+
       let calculatedTotalUnits = 0;
       if (req.body.floors) {
         if (Array.isArray(req.body.floors)) {
@@ -142,17 +157,16 @@ export class BuildingController {
       }
 
       const requestedTotalUnits = Number(req.body.totalUnits) || 0;
-      
+
       const payload: CreateBuildingDTO = {
         ...req.body,
+        ownerId,
+        managerId,
         totalUnits: Math.max(requestedTotalUnits, calculatedTotalUnits),
         totalFloors: Number(Object.keys(req.body.floors || {}).length),
       };
-      console.log('Payload units evaluated as:', payload.totalUnits); 
 
       const data = await this.uc.create(payload);
-      
-      console.log(data)
 
       let floorData: any[] = [];
       if (Array.isArray(req.body.floors)) {
@@ -175,7 +189,6 @@ export class BuildingController {
         });
       } else {
         floorData = Object.entries(req.body.floors).map(([key, units], index) => {
-          // If key is something like "Ground" or "Floor 1", parseInt will return NaN
           const parsedKey = parseInt(key, 10);
           const floorNum = isNaN(parsedKey) ? index : parsedKey;
           return {
@@ -187,11 +200,13 @@ export class BuildingController {
         });
       }
 
-      await this.uc.createFloors(floorData);
+      await this.uc.createFloors(floorData, req.user!.userId, req.user!.role);
+
+      const finalBuilding = await this.uc.getById(data._id);
 
       return res.status(201).json({
         message: 'Building created successfully.',
-        data,
+        data: finalBuilding,
       });
     } catch (error) {
       return this.handleError(res, error, 'Failed to create building.');
@@ -201,7 +216,7 @@ export class BuildingController {
   update = async (req: Request<{ id: string }, {}, UpdateBuildingDTO>, res: Response): Promise<Response> => {
     try {
       const id = BuildingController.getSingleParam(req.params.id);
-      const data = await this.uc.update(id, req.body);
+      const data = await this.uc.update(id, req.body, req.user!.userId, req.user!.role);
 
       return res.status(200).json({
         message: 'Building updated successfully.',
@@ -215,7 +230,7 @@ export class BuildingController {
   delete = async (req: Request<{ id: string }>, res: Response): Promise<Response> => {
     try {
       const id = BuildingController.getSingleParam(req.params.id);
-      await this.uc.delete(id);
+      await this.uc.delete(id, req.user!.userId, req.user!.role);
 
       return res.status(200).json({
         message: 'Building deleted successfully.',

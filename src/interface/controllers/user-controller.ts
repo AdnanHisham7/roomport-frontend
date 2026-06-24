@@ -53,6 +53,42 @@ export class UserController {
     }
   };
 
+  getMyManagers = async (req: Request, res: Response): Promise<Response> => {
+    try {
+      const adminId = req.user?.userId;
+      if (!adminId) return res.status(401).json({ message: 'Unauthorized access.' });
+
+      const managers = await this.userUseCase.getMyManagers(adminId);
+      return res.status(200).json({ data: managers });
+    } catch (error) {
+      return this.handleError(res, error, 'An error occurred while fetching managers.');
+    }
+  };
+
+  updateManagerStatus = async (req: Request, res: Response): Promise<Response> => {
+    try {
+      const adminId = req.user?.userId;
+      if (!adminId) return res.status(401).json({ message: 'Unauthorized access.' });
+
+      const data = await this.userUseCase.updateManagerStatus(adminId, req.params.id as string, req.body.status);
+      return res.status(200).json({ message: 'Manager status updated.', data });
+    } catch (error) {
+      return this.handleError(res, error, 'An error occurred while updating manager status.');
+    }
+  };
+
+  deleteManager = async (req: Request, res: Response): Promise<Response> => {
+    try {
+      const adminId = req.user?.userId;
+      if (!adminId) return res.status(401).json({ message: 'Unauthorized access.' });
+
+      await this.userUseCase.deleteManager(adminId, req.params.id as string);
+      return res.status(200).json({ message: 'Manager removed.' });
+    } catch (error) {
+      return this.handleError(res, error, 'An error occurred while removing the manager.');
+    }
+  };
+
   private handleError(res: Response, error: unknown, fallback: string): Response {
     if (error instanceof AppError) {
       return res.status(error.statusCode).json({

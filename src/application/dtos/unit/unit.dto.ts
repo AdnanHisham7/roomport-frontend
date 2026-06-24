@@ -4,6 +4,9 @@ export interface CreateUnitDTO {
   unitNumber: string;
   floorNumber: string;
   buildingId: string;
+  title?: string;
+  description?: string;
+  images?: string[];
   rentAmount: number;
   isOccupied?: boolean;
   amenities?: string[];
@@ -18,6 +21,7 @@ export interface UnitResponseDTO extends CreateUnitDTO {
   _id: string;
   isOccupied: boolean;
   status: UnitStatus;
+  viewCount?: number;
   createdAt?: Date;
   updatedAt?: Date;
 }

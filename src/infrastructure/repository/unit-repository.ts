@@ -28,13 +28,31 @@ export class UnitRepository implements IUnitRepository {
     if (filter?.status) query.status = filter.status;
     if (filter?.isOccupied !== undefined) query.isOccupied = filter.isOccupied;
 
-    const docs = await UnitModel.find(query).lean();
+    const docs = await UnitModel.find(query).sort({ floorNumber: 1, unitNumber: 1 }).lean();
     return docs.map(d => this.toEntity(d));
   }
 
   async findByBuildingId(buildingId: string): Promise<IUnit[]> {
-    const docs = await UnitModel.find({ buildingId }).lean();
+    const docs = await UnitModel.find({ buildingId }).sort({ floorNumber: 1, unitNumber: 1 }).lean();
     return docs.map(d => this.toEntity(d));
+  }
+
+  async findByBuildingAndFloor(buildingId: string, floorNumber: string): Promise<IUnit[]> {
+    const docs = await UnitModel.find({ buildingId, floorNumber }).sort({ unitNumber: 1 }).lean();
+    return docs.map(d => this.toEntity(d));
+  }
+
+  async findByBuildingIds(buildingIds: string[]): Promise<IUnit[]> {
+    if (buildingIds.length === 0) return [];
+    const docs = await UnitModel.find({ buildingId: { $in: buildingIds } }).lean();
+    return docs.map(d => this.toEntity(d));
+  }
+
+  async countByBuildingId(buildingId: string, filter?: Partial<Pick<IUnit, 'status' | 'isOccupied'>>): Promise<number> {
+    const query: Record<string, any> = { buildingId };
+    if (filter?.status) query.status = filter.status;
+    if (filter?.isOccupied !== undefined) query.isOccupied = filter.isOccupied;
+    return UnitModel.countDocuments(query);
   }
 
   async create(data: Omit<IUnit, '_id' | 'createdAt' | 'updatedAt'>): Promise<IUnit> {
@@ -51,6 +69,13 @@ export class UnitRepository implements IUnitRepository {
   async delete(id: string): Promise<boolean> {
     const result = await UnitModel.findByIdAndDelete(id);
     return !!result;
+  }
+
+  async deleteByBuildingAndFloor(buildingId: string, floorNumber: string, onlyAvailable: boolean): Promise<number> {
+    const query: Record<string, any> = { buildingId, floorNumber };
+    if (onlyAvailable) query.isOccupied = false;
+    const result = await UnitModel.deleteMany(query);
+    return result.deletedCount ?? 0;
   }
 
   async existsById(id: string): Promise<boolean> {

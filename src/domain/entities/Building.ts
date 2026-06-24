@@ -8,6 +8,9 @@ export interface IBuildingLocation {
   pincode:   string;
   landmark?: string;
   country:   string;
+  latitude?:  number;
+  longitude?: number;
+  street?:    string;
 }
 
 export interface IBuilding {
@@ -32,6 +35,9 @@ export interface IBuilding {
   documents?:       string[];
   description?:     string;
   yearOfBuild?:     string;
+  isPublished:      boolean;   // controls public marketplace visibility (builder-controlled)
+  isFeatured:       boolean;   // controls homepage spotlight (super-admin-controlled)
+  viewCount?:       number;
   createdAt?:       Date;
   updatedAt?:       Date;
 }

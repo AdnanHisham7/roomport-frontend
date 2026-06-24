@@ -7,6 +7,7 @@ export function notificationRouter(notificationController: NotificationControlle
 
   // Assuming authenticate middleware sets req.user
   router.get('/', authenticate as any, notificationController.getUserNotifications.bind(notificationController));
+  router.get('/unread-count', authenticate as any, notificationController.getUnreadCount.bind(notificationController));
   router.post('/test-send', authenticate as any, notificationController.sendTestNotification.bind(notificationController));
   router.patch('/read-all', authenticate as any, notificationController.markAllAsRead.bind(notificationController));
   router.patch('/:id/read', authenticate as any, notificationController.markAsRead.bind(notificationController));
