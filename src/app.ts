@@ -3,27 +3,38 @@ import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import morgan from 'morgan';
+import path from 'path';
 import authRoutes from './interface/routers/auth-router';
 import systemRoutes from './interface/routers/bootstrap-router';
 import { createTenantRouter } from './interface/routers/tenant-router';
 import { createDocumentRouter } from './interface/routers/document-router';
 import { globalErrorHandler } from './interface/middleware/errorhandle-middleware';
-import { documentController, tenantController, agreementController, buildingController, floorController, expenseController } from './infrastructure/DIContainer';
+import {
+  documentController, tenantController, agreementController, buildingController,
+  floorController, expenseController, paymentController, unitController,
+  userController, activityLogController, notificationController, analyticsController,
+  superAdminController, inquiryController, publicController, uploadController, subscriptionController,
+} from './infrastructure/DIContainer';
 import { createAgreementRouter } from './interface/routers/agreement-router';
 import { createPaymentRouter } from './interface/routers/payment-router';
-import { paymentController } from './infrastructure/DIContainer';
 import { createUnitRouter } from './interface/routers/unit-router';
-import { unitController } from './infrastructure/DIContainer';
 import { createExpenseRouter } from './interface/routers/expense-router';
 
-import { createBuildingRouter } from './interface/routers/building-router';
+import { createBuildingRouter, createFloorRouter } from './interface/routers/building-router';
 import { createUserRouter } from './interface/routers/user-router';
-import { userController, activityLogController } from './infrastructure/DIContainer';
 import { activityLogRouter } from './interface/routers/activity-log-router';
+import { notificationRouter } from './interface/routers/notification-router';
+import { createAnalyticsRouter } from './interface/routers/analytics-router';
+import { createSuperAdminRouter } from './interface/routers/super-admin-router';
+import { createInquiryRouter } from './interface/routers/inquiry-router';
+import { createPublicRouter } from './interface/routers/public-router';
+import { createUploadRouter } from './interface/routers/upload-router';
+import { createSubscriptionRouter } from './interface/routers/subscription-router';
+
 const createApp = (): Application => {
   const app = express();
   app.use(morgan('dev'));
-  app.use(helmet());
+  app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 
   app.use(
     cors({
@@ -63,6 +74,8 @@ const createApp = (): Application => {
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+  // Serve uploaded images (buildings, units, profiles, documents)
+  app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 
   app.use(globalLimiter);
 
@@ -86,8 +99,22 @@ const createApp = (): Application => {
   app.use('/api/v1/expenses', createExpenseRouter(expenseController));
 
   app.use('/api/v1/buildings',     createBuildingRouter(buildingController, floorController));
+  app.use('/api/v1/floors',        createFloorRouter(floorController));
   app.use('/api/v1/users',         createUserRouter(userController));
   app.use('/api/v1/activity-logs', activityLogRouter(activityLogController));
+  app.use('/api/v1/notifications', notificationRouter(notificationController));
+  app.use('/api/v1/analytics',     createAnalyticsRouter());
+
+  // ── New: subscriptions/billing, image uploads, builder inquiries ──────────
+  app.use('/api/v1/subscriptions', createSubscriptionRouter(subscriptionController));
+  app.use('/api/v1/uploads',       createUploadRouter(uploadController));
+  app.use('/api/v1/inquiries',     createInquiryRouter(inquiryController));
+
+  // ── New: super admin portal ────────────────────────────────────────────────
+  app.use('/api/v1/super-admin',   createSuperAdminRouter(superAdminController));
+
+  // ── New: fully public marketplace — no authentication anywhere below ──────
+  app.use('/api/v1/public',        createPublicRouter(publicController));
 
   app.use((_req: Request, res: Response) => {
     res.status(404).json({
