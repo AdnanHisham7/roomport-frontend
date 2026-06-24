@@ -1,11 +1,13 @@
 import { Router } from 'express';
 import { ActivityLogController } from '../controllers/activity-log-controller';
-// import { authMiddleware } from '../middleware/auth-middleware';
+import { authenticate, authorize } from '../middleware/auth-middleware';
+import { UserRole } from '../../shared/enums/SystemRoles.enum';
 
 export const activityLogRouter = (controller: ActivityLogController): Router => {
   const router = Router();
 
-  // router.use(authMiddleware); // Uncomment and use as required by your project authentication needs
+  router.use(authenticate);
+  router.use(authorize(UserRole.ADMIN, UserRole.MANAGER, UserRole.SUPER_ADMIN));
 
   router.post('/', controller.logActivity.bind(controller));
   router.get('/', controller.getActivities.bind(controller));
