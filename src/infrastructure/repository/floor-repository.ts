@@ -67,4 +67,10 @@ export class FloorRepository implements IFloorRepository {
   async existsByBuildingAndFloorNumber(buildingId: string, floorNumber: number): Promise<boolean> {
     return !!(await FloorModel.exists({ buildingId, floorNumber }));
   }
+
+  async findByBuildingAndFloorNumber(buildingId: string, floorNumber: number): Promise<IFloor | null> {
+    const doc = await FloorModel.findOne({ buildingId, floorNumber }).lean();
+    if (!doc) return null;
+    return this.toEntity(doc);
+  }
 }
