@@ -5,12 +5,16 @@ export interface IUnit {
   unitNumber: string;
   floorNumber: string;
   buildingId: string;
+  title?: string;
+  description?: string;
+  images?: string[];
   rentAmount: number;
   isOccupied: boolean;
   amenities?: string[];
   bedrooms: number;
   bathrooms: number;
   status: UnitStatus;
+  viewCount?: number;
   createdAt?: Date;
   updatedAt?: Date;
 }

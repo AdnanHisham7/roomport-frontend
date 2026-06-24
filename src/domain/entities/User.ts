@@ -11,6 +11,7 @@ export interface IUser {
   status:          UserStatus;   
   role:            UserRole;     
   building_id?:    string;       
+  ownerId?:        string;       // for role='manager' — the admin (builder) who created/owns this account
   profile_image?:  string;
   lastLoginAt?:    Date;
   refresh_token?:  string | null;
