@@ -3,6 +3,11 @@ import { IUserRepository } from '../../../domain/repository/user-repository-impl
 import { AppError } from '../../../shared/error/app-error';
 import { IUserUseCase } from '../../interface/user/user-usecase.impl';
 
+function sanitize(user: IUser): IUser {
+  const { password, refresh_token, ...rest } = user;
+  return rest as IUser;
+}
+
 export class UserUseCase implements IUserUseCase {
   constructor(private readonly userRepository: IUserRepository) {}
 
@@ -11,7 +16,7 @@ export class UserUseCase implements IUserUseCase {
     if (!user) {
       throw new AppError('User not found', 404, 'Make sure the user ID is correct');
     }
-    return user;
+    return sanitize(user);
   }
 
   async updateProfile(userId: string, data: Partial<IUser>): Promise<IUser | null> {
@@ -27,7 +32,7 @@ export class UserUseCase implements IUserUseCase {
     if (!updatedUser) {
       throw new AppError('User not found', 404, 'Make sure the user ID is correct');
     }
-    return updatedUser;
+    return sanitize(updatedUser);
   }
 
   async createManager(adminId: string, data: any): Promise<IUser> {
@@ -56,6 +61,29 @@ export class UserUseCase implements IUserUseCase {
         ownerId: adminId
     } as any);
 
-    return newUser;
+    return sanitize(newUser);
+  }
+
+  async getMyManagers(adminId: string): Promise<IUser[]> {
+    const managers = await this.userRepository.findByOwnerId(adminId);
+    return managers.map(sanitize);
+  }
+
+  async updateManagerStatus(adminId: string, managerId: string, status: 'active' | 'inactive' | 'suspended'): Promise<IUser> {
+    const manager = await this.userRepository.findById(managerId);
+    if (!manager || manager.ownerId !== adminId) {
+      throw new AppError('Manager not found', 404, 'This manager does not belong to your account.');
+    }
+    await this.userRepository.updateStatus(managerId, status);
+    const updated = await this.userRepository.findById(managerId);
+    return sanitize(updated!);
+  }
+
+  async deleteManager(adminId: string, managerId: string): Promise<void> {
+    const manager = await this.userRepository.findById(managerId);
+    if (!manager || manager.ownerId !== adminId) {
+      throw new AppError('Manager not found', 404, 'This manager does not belong to your account.');
+    }
+    await this.userRepository.delete(managerId);
   }
 }

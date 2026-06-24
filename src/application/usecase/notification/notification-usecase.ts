@@ -17,6 +17,10 @@ export class NotificationUseCase implements INotificationUseCase {
     return this.notificationRepository.findByUserId(userId);
   }
 
+  async getUnreadCount(userId: string): Promise<number> {
+    return this.notificationRepository.countUnread(userId);
+  }
+
   async markAsRead(notificationId: string): Promise<Notification | null> {
     return this.notificationRepository.markAsRead(notificationId);
   }

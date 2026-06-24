@@ -1,18 +1,35 @@
 import { IUnitRepository } from "../../../domain/repository/unit-repository-impl";
+import { IFloorRepository } from "../../../domain/repository/floor-repository-impl";
 import { CreateUnitDTO, UnitResponseDTO, UpdateUnitDTO } from "../../dtos/unit/unit.dto";
-import { IUnitUseCases } from "../../interface/unit/unit-usecase-impl";
+import { CreateUnitOptions, IUnitUseCases } from "../../interface/unit/unit-usecase-impl";
 import { ISubscriptionRepository } from "../../../domain/repository/subscription-repository-impl";
 import { IBuildingRepository } from "../../../domain/repository/building-repository-impl";
-import { PaymentRequiredError, NotFoundError } from "../../../shared/error/app-error";
+import { PaymentRequiredError, NotFoundError, BadRequestError, ForbiddenError } from "../../../shared/error/app-error";
 
 export class UnitUseCases implements IUnitUseCases {
   constructor(
     private readonly unitRepository: IUnitRepository,
     private readonly subscriptionRepo: ISubscriptionRepository,
-    private readonly buildingRepo: IBuildingRepository
+    private readonly buildingRepo: IBuildingRepository,
+    private readonly floorRepo: IFloorRepository
   ) {}
 
-  async create(data: CreateUnitDTO): Promise<UnitResponseDTO> {
+  // ── ownership guard ──────────────────────────────────────────────────────
+  private async assertOwnership(buildingId: string, requesterId?: string, requesterRole?: string): Promise<void> {
+    if (!requesterId || !requesterRole) return;      // internal/system call — skip
+    if (requesterRole === 'super_admin') return;
+
+    const building = await this.buildingRepo.findById(buildingId);
+    if (!building) throw new NotFoundError('Building not found');
+
+    const isOwner   = building.ownerId === requesterId;
+    const isManager = building.managerId === requesterId;
+    if (!isOwner && !isManager) {
+      throw new ForbiddenError('You do not have access to this building.', 'Only the building owner or its assigned manager can manage its rooms.');
+    }
+  }
+
+  async create(data: CreateUnitDTO, options: CreateUnitOptions = {}): Promise<UnitResponseDTO> {
     const building = await this.buildingRepo.findById(data.buildingId);
     if (!building) throw new NotFoundError('Building not found');
 
@@ -24,16 +41,30 @@ export class UnitUseCases implements IUnitUseCases {
     const userBuildings = await this.buildingRepo.findByOwnerId(building.ownerId);
     const currentUnitCount = userBuildings.reduce((sum, b) => sum + b.totalUnits, 0);
 
-    if (currentUnitCount > subscription.numberOfUnits) {
+    if (currentUnitCount >= subscription.numberOfUnits) {
        throw new PaymentRequiredError('Unit limit exceeded.', 'Please upgrade your plan unit limits to add more units.');
+    }
+
+    let floor = null;
+    if (!options.skipFloorExistsCheck) {
+      floor = await this.floorRepo.findByBuildingAndFloorNumber(data.buildingId, Number(data.floorNumber));
+      if (!floor) {
+        throw new NotFoundError('Floor not found.', `Create floor "${data.floorNumber}" first before adding a room to it.`);
+      }
     }
 
     const unitData = {
       ...data,
       isOccupied: data.isOccupied ?? false,
-      status: data.status ?? 'available',
+      status: data.status ?? 'available' as const,
     };
     const unit = await this.unitRepository.create(unitData);
+
+    if (!options.skipCountSync) {
+      if (floor?._id) await this.floorRepo.update(floor._id, { totalUnits: floor.totalUnits + 1 });
+      await this.buildingRepo.incrementFields(data.buildingId, { totalUnits: 1 });
+    }
+
     return unit as UnitResponseDTO;
   }
 
@@ -44,13 +75,15 @@ export class UnitUseCases implements IUnitUseCases {
 
   async getById(id: string): Promise<UnitResponseDTO> {
     const unit = await this.unitRepository.findById(id);
-    if (!unit) throw new Error("Unit not found");
+    if (!unit) throw new NotFoundError("Unit not found");
     return unit as UnitResponseDTO;
   }
 
-  async update(id: string, data: UpdateUnitDTO): Promise<UnitResponseDTO> {
+  async update(id: string, data: UpdateUnitDTO, requesterId?: string, requesterRole?: string): Promise<UnitResponseDTO> {
     const existingUnit = await this.unitRepository.findById(id);
     if (!existingUnit) throw new NotFoundError('Unit not found');
+
+    await this.assertOwnership(existingUnit.buildingId, requesterId, requesterRole);
 
     const building = await this.buildingRepo.findById(existingUnit.buildingId);
     if (building) {
@@ -60,8 +93,15 @@ export class UnitUseCases implements IUnitUseCases {
       }
     }
 
-    const unit = await this.unitRepository.update(id, data);
-    if (!unit) throw new Error("Unit not found");
+    // Keep isOccupied / status in sync with each other when one is set explicitly
+    const patch: UpdateUnitDTO = { ...data };
+    if (patch.status === 'occupied') patch.isOccupied = true;
+    if (patch.status === 'available') patch.isOccupied = false;
+    if (patch.isOccupied === true && !patch.status)  patch.status = 'occupied';
+    if (patch.isOccupied === false && !patch.status && existingUnit.status === 'occupied') patch.status = 'available';
+
+    const unit = await this.unitRepository.update(id, patch);
+    if (!unit) throw new NotFoundError("Unit not found");
     return unit as UnitResponseDTO;
   }
 
@@ -74,9 +114,25 @@ export class UnitUseCases implements IUnitUseCases {
     return results.filter(Boolean) as UnitResponseDTO[];
   }
 
-  async delete(id: string): Promise<void> {
-    const exists = await this.unitRepository.existsById(id);
-    if (!exists) throw new Error("Unit not found");
+  async delete(id: string, requesterId?: string, requesterRole?: string): Promise<void> {
+    const unit = await this.unitRepository.findById(id);
+    if (!unit) throw new NotFoundError("Unit not found");
+
+    await this.assertOwnership(unit.buildingId, requesterId, requesterRole);
+
+    if (unit.isOccupied || unit.status === 'occupied' || unit.status === 'reserved') {
+      throw new BadRequestError(
+        'This room is currently occupied or reserved.',
+        'Vacate the tenant or change the room status before deleting it.'
+      );
+    }
+
     await this.unitRepository.delete(id);
+
+    const floor = await this.floorRepo.findByBuildingAndFloorNumber(unit.buildingId, Number(unit.floorNumber));
+    if (floor?._id) {
+      await this.floorRepo.update(floor._id, { totalUnits: Math.max(0, floor.totalUnits - 1) });
+    }
+    await this.buildingRepo.incrementFields(unit.buildingId, { totalUnits: -1 });
   }
 }
