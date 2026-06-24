@@ -1,0 +1,129 @@
+export interface Subscription {
+  _id: string;
+  userId: string;
+  amount: number;
+  numberOfBuildings: number;
+  numberOfUnits: number;
+  dueDate: string;
+  paidAt?: string;
+  status: string;
+  paymentMethod?: string;
+  invoicenumber?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export type InquiryStatus = 'new' | 'contacted' | 'closed' | 'spam';
+
+export interface Inquiry {
+  _id: string;
+  buildingId: string;
+  unitId?: string;
+  ownerId: string;
+  name: string;
+  email: string;
+  phone?: string;
+  message?: string;
+  status: InquiryStatus;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface PlatformStats {
+  totalBuilders: number;
+  totalManagers: number;
+  totalBuildings: number;
+  publishedBuildings: number;
+  totalRooms: number;
+  occupiedRooms: number;
+  vacantRooms: number;
+  occupancyRate: number;
+  totalRevenue: number;
+  activeSubscriptions: number;
+  pendingSubscriptions: number;
+  newBuildersLast30Days: number;
+  totalInquiries: number;
+  newInquiriesLast30Days: number;
+}
+
+export interface BuilderListItem {
+  _id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  phone_number?: string;
+  status: string;
+  role: string;
+  paymentStatus: boolean;
+  email_verified: boolean;
+  buildingsCount: number;
+  unitsCount: number;
+  createdAt?: string;
+  lastLoginAt?: string;
+}
+
+export interface BuilderDetail extends BuilderListItem {
+  managers: { _id: string; first_name: string; last_name: string; email: string; status: string }[];
+  buildings: { _id: string; name: string; totalUnits: number; totalFloors: number; status: string; isPublished: boolean }[];
+  subscription: { _id: string; amount: number; numberOfBuildings: number; numberOfUnits: number; status: string; dueDate: string } | null;
+}
+
+export interface PlatformSetting {
+  _id?: string;
+  platformName: string;
+  supportEmail?: string;
+  pricePerBuilding: number;
+  pricePerUnit: number;
+  currency: string;
+  maintenanceMode: boolean;
+  maxFeaturedBuildings: number;
+  updatedAt?: string;
+}
+
+export interface PublicBuildingCard {
+  _id: string;
+  name: string;
+  type: string;
+  status: string;
+  location: { address: string; city: string; state: string; pincode: string; landmark?: string; country: string; latitude?: number; longitude?: number };
+  totalUnits: number;
+  totalFloors: number;
+  sqft?: number;
+  lift: boolean;
+  helipad: boolean;
+  amenities?: string[];
+  images?: string[];
+  description?: string;
+  isFeatured: boolean;
+  availableUnitsCount: number;
+  occupiedUnitsCount: number;
+  minRent: number | null;
+  maxRent: number | null;
+  createdAt?: string;
+}
+
+export interface PublicBuildingDetail extends PublicBuildingCard {
+  floors: { _id: string; floorNumber: number; name: string; totalUnits: number; status: string; availableUnitsCount: number; occupiedUnitsCount: number }[];
+}
+
+export interface PublicUnitDetail {
+  _id: string;
+  unitNumber: string;
+  floorNumber: string;
+  buildingId: string;
+  title?: string;
+  description?: string;
+  images?: string[];
+  rentAmount: number;
+  isOccupied: boolean;
+  amenities?: string[];
+  bedrooms: number;
+  bathrooms: number;
+  status: string;
+  building: { _id: string; name: string; type: string; location: PublicBuildingCard['location']; amenities?: string[]; images?: string[] };
+}
+
+export interface PublicFilters {
+  cities: string[];
+  types: string[];
+}
