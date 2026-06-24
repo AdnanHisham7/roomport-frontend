@@ -26,8 +26,8 @@ const BuildingSchema = new Schema<IBuildingDocument>(
     location:    { type: LocationSchema, required: true },
     ownerId:     { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true } as any, // change to useId 
     managerId:   { type: Schema.Types.ObjectId, ref: 'User', default: null, index: true } as any,
-    totalUnits:  { type: Number, required: true, min: 1 },
-    totalFloors: { type: Number, required: true, min: 1 },
+    totalUnits:  { type: Number, required: true, min: 0 },
+    totalFloors: { type: Number, required: true, min: 0 },
     sqft:        { type: Number, default: null },
     lift:        { type: Boolean, default: false },
     helipad:     { type: Boolean, default: false },
