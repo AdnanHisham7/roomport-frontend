@@ -59,8 +59,8 @@ function App() {
         <Route element={<PublicLayout />}>
           <Route path="/" element={<LandingPage />} />
           <Route path="/listings" element={<ListingsPage />} />
-          <Route path="/listings/:buildingId" element={<BuildingDetailPage />} />
-          <Route path="/listings/:buildingId/rooms/:unitId" element={<RoomDetailPage />} />
+          <Route path="/listings/:slug" element={<BuildingDetailPage />} />
+          <Route path="/listings/:slug/rooms/:unitId" element={<RoomDetailPage />} />
           <Route path="/get-started" element={<GetStartedPage />} />
           <Route path="/checkout/:status" element={<CheckoutResultPage />} />
         </Route>
@@ -69,21 +69,14 @@ function App() {
 
         <Route element={<AuthLayout />}>
           <Route path="/login" element={<GuestRoute><LoginPage /></GuestRoute>} />
-          <Route path="/register" element={<GuestRoute><RegisterPage /></GuestRoute>} />
+          {/* /register intentionally omitted — onboarding flows through /get-started */}
           <Route path="/verify-email" element={<VerifyEmailPage />} />
           <Route path="/forgot-password" element={<GuestRoute><ForgotPasswordPage /></GuestRoute>} />
           <Route path="/reset-password" element={<GuestRoute><ResetPasswordPage /></GuestRoute>} />
           <Route path="/setup" element={<SetupPage />} />
         </Route>
 
-        <Route
-          path="/dashboard"
-          element={
-            <RoleRoute roles={['admin', 'manager']}>
-              <BuilderLayout />
-            </RoleRoute>
-          }
-        >
+        <Route path="/dashboard" element={<RoleRoute roles={['admin', 'manager']}><BuilderLayout /></RoleRoute>}>
           <Route index element={<DashboardPage />} />
           <Route path="buildings" element={<BuildingsPage />} />
           <Route path="buildings/:id" element={<BuildingManagePage />} />
@@ -100,14 +93,7 @@ function App() {
           <Route path="profile" element={<ProfilePage />} />
         </Route>
 
-        <Route
-          path="/super-admin"
-          element={
-            <RoleRoute roles={['super_admin']}>
-              <SuperAdminLayout />
-            </RoleRoute>
-          }
-        >
+        <Route path="/super-admin" element={<RoleRoute roles={['super_admin']}><SuperAdminLayout /></RoleRoute>}>
           <Route index element={<SuperDashboardPage />} />
           <Route path="builders" element={<BuildersPage />} />
           <Route path="builders/:id" element={<BuilderDetailPage />} />
