@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
-import { BedDouble, Bath, DollarSign, Tag, Trash2, Save, Image as ImageIcon, Loader2 } from 'lucide-react';
+import { BedDouble, Bath, DollarSign, Tag, Trash2, Save, Image as ImageIcon, Loader2, User, ExternalLink, Coins } from 'lucide-react';
 import { Drawer } from '@/components/ui/Drawer';
 import { Button, Input, Select, Textarea } from '@/components/ui';
 import { StatusPill } from '@/components/ui/Badge';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useUpdateUnitMutation, useDeleteUnitMutation } from '@/store/api/unitApi';
 import { useUploadMultipleImagesMutation } from '@/store/api/uploadApi';
+import { useGetTenantsQuery } from '@/store/api/tenantApi';
 import type { Unit } from '@/types/building';
 
 interface FormValues {
@@ -18,12 +20,13 @@ interface FormValues {
   bathrooms: number;
   status: string;
   amenities: string;
+  tokenAmount: number;
 }
 
 const statusOptions = [
-  { value: 'available', label: 'Available' },
-  { value: 'occupied', label: 'Occupied' },
-  { value: 'reserved', label: 'Reserved' },
+  { value: 'available',        label: 'Available' },
+  { value: 'occupied',         label: 'Occupied' },
+  { value: 'reserved',         label: 'Reserved' },
   { value: 'under maintenance', label: 'Under maintenance' },
 ];
 
@@ -34,7 +37,15 @@ export function RoomDetailDrawer({ unit, open, onClose }: { unit: Unit | null; o
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [images, setImages] = useState<string[]>([]);
 
-  const { register, handleSubmit, reset, formState: { isDirty } } = useForm<FormValues>();
+  // Fetch tenants to find who occupies this room
+  const { data: tenantsData } = useGetTenantsQuery(
+    unit?.buildingId ? { buildingId: unit.buildingId } : undefined,
+    { skip: !unit?.buildingId }
+  );
+  const occupyingTenant = tenantsData?.data?.find(t => t.unitId === unit?._id);
+
+  const { register, handleSubmit, reset, watch, formState: { isDirty } } = useForm<FormValues>();
+  const watchStatus = watch('status');
 
   useEffect(() => {
     if (unit) {
@@ -46,6 +57,7 @@ export function RoomDetailDrawer({ unit, open, onClose }: { unit: Unit | null; o
         bathrooms: unit.bathrooms,
         status: unit.status,
         amenities: unit.amenities?.join(', ') ?? '',
+        tokenAmount: unit.tokenAmount ?? 0,
       });
       setImages(unit.images ?? []);
     }
@@ -64,8 +76,9 @@ export function RoomDetailDrawer({ unit, open, onClose }: { unit: Unit | null; o
           bedrooms: Number(values.bedrooms),
           bathrooms: Number(values.bathrooms),
           status: values.status as any,
-          amenities: values.amenities.split(',').map((a) => a.trim()).filter(Boolean),
+          amenities: values.amenities.split(',').map(a => a.trim()).filter(Boolean),
           images,
+          tokenAmount: values.status === 'reserved' ? Number(values.tokenAmount) : undefined,
         },
       }).unwrap();
       toast.success('Room updated.');
@@ -90,7 +103,7 @@ export function RoomDetailDrawer({ unit, open, onClose }: { unit: Unit | null; o
     if (!files.length) return;
     try {
       const res = await uploadImages({ category: 'units', files }).unwrap();
-      setImages((prev) => [...prev, ...res.data.map((f) => f.url)]);
+      setImages(prev => [...prev, ...res.data.map(f => f.url)]);
     } catch {
       toast.error('Image upload failed.');
     }
@@ -104,29 +117,61 @@ export function RoomDetailDrawer({ unit, open, onClose }: { unit: Unit | null; o
             <span className="font-mono text-2xl font-semibold text-ink">{unit.unitNumber}</span>
             <StatusPill status={unit.status} />
           </div>
-          <p className="mb-6 text-sm text-ink-faint">Floor {unit.floorNumber}</p>
+          <p className="mb-4 text-sm text-ink-faint">Floor {unit.floorNumber}</p>
+
+          {/* Tenant info panel when room is occupied */}
+          {occupyingTenant && (
+            <div className="mb-5 flex items-center gap-3 rounded-xl border border-crimson-200 bg-crimson-50 px-4 py-3">
+              <User className="size-4 shrink-0 text-crimson-500" />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-ink">
+                  {occupyingTenant.firstName} {occupyingTenant.lastName}
+                </p>
+                <p className="truncate text-xs text-ink-soft">{occupyingTenant.email}</p>
+              </div>
+              <Link
+                to={`/dashboard/tenants/${occupyingTenant._id}`}
+                className="flex items-center gap-1 text-xs font-medium text-crimson-600 hover:underline"
+              >
+                View profile <ExternalLink className="size-3" />
+              </Link>
+            </div>
+          )}
 
           <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
             <Input label="Room title" placeholder="e.g. Sunny corner studio" {...register('title')} />
-            <Textarea label="Description" placeholder="Describe this room for prospective tenants..." {...register('description')} />
+            <Textarea label="Description" placeholder="Describe this room..." {...register('description')} />
 
             <div className="grid grid-cols-2 gap-3">
               <Input label="Monthly rent" type="number" step="0.01" leftIcon={<DollarSign className="size-4" />} {...register('rentAmount')} />
               <Select label="Status" options={statusOptions} {...register('status')} />
             </div>
+
+            {/* Token amount — only when status is reserved */}
+            {watchStatus === 'reserved' && (
+              <Input
+                label="Token / advance amount"
+                hint="Amount collected as reservation deposit"
+                type="number" step="0.01" min={0}
+                leftIcon={<Coins className="size-4" />}
+                {...register('tokenAmount')}
+              />
+            )}
+
             <div className="grid grid-cols-2 gap-3">
               <Input label="Bedrooms" type="number" min={0} leftIcon={<BedDouble className="size-4" />} {...register('bedrooms')} />
               <Input label="Bathrooms" type="number" min={0} leftIcon={<Bath className="size-4" />} {...register('bathrooms')} />
             </div>
             <Input label="Amenities" placeholder="AC, Balcony, WiFi (comma separated)" leftIcon={<Tag className="size-4" />} {...register('amenities')} />
 
+            {/* Photos */}
             <div>
               <label className="mb-1.5 block text-[13px] font-medium text-ink-soft">Photos</label>
               <div className="flex flex-wrap gap-2">
                 {images.map((src, i) => (
                   <div key={i} className="relative size-16 overflow-hidden rounded-lg border border-line">
                     <img src={src} alt="" className="size-full object-cover" />
-                    <button type="button" onClick={() => setImages((prev) => prev.filter((_, idx) => idx !== i))} className="absolute right-0.5 top-0.5 rounded-full bg-ink/60 p-0.5 text-white">
+                    <button type="button" onClick={() => setImages(prev => prev.filter((_, idx) => idx !== i))} className="absolute right-0.5 top-0.5 rounded-full bg-ink/60 p-0.5 text-white">
                       <Trash2 className="size-2.5" />
                     </button>
                   </div>
@@ -149,13 +194,8 @@ export function RoomDetailDrawer({ unit, open, onClose }: { unit: Unit | null; o
       </Drawer>
 
       <ConfirmDialog
-        open={confirmOpen}
-        onClose={() => setConfirmOpen(false)}
-        onConfirm={onDelete}
-        loading={deleting}
-        title="Delete this room?"
-        description="This can't be undone. Occupied or reserved rooms can't be deleted."
-        confirmLabel="Delete room"
+        open={confirmOpen} onClose={() => setConfirmOpen(false)} onConfirm={onDelete} loading={deleting}
+        title="Delete this room?" description="This can't be undone. Occupied or reserved rooms can't be deleted." confirmLabel="Delete room"
       />
     </>
   );
