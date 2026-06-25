@@ -3,6 +3,7 @@ import { AnimatePresence } from 'framer-motion';
 import { Plus, Layers3 } from 'lucide-react';
 import { FloorSlab } from './FloorSlab';
 import { RoomDetailDrawer } from './RoomDetailDrawer';
+import { AssignTenantModal } from './AssignTenantModal';
 import { AddFloorModal, AddRoomModal, EditFloorModal } from './FloorRoomModals';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Button } from '@/components/ui';
@@ -12,18 +13,28 @@ import { useGetUnitsQuery } from '@/store/api/unitApi';
 import { toast } from 'sonner';
 import type { Floor, Unit } from '@/types/building';
 
-export function BuildingDiagram({ buildingId }: { buildingId: string }) {
+interface Props {
+  buildingId:   string;
+  buildingName: string;
+}
+
+export function BuildingDiagram({ buildingId, buildingName }: Props) {
   const { data: floorsData, isLoading: floorsLoading } = useGetFloorsByBuildingQuery(buildingId);
-  const { data: unitsData, isLoading: unitsLoading } = useGetUnitsQuery({ buildingId });
+  const { data: unitsData,  isLoading: unitsLoading }  = useGetUnitsQuery({ buildingId });
   const [deleteFloor, { isLoading: deletingFloor }] = useDeleteFloorMutation();
 
-  const [selectedUnit, setSelectedUnit] = useState<Unit | null>(null);
-  const [addFloorOpen, setAddFloorOpen] = useState(false);
-  const [editFloor, setEditFloor] = useState<Floor | null>(null);
+  // Drawers / modals state
+  const [editUnit,      setEditUnit]      = useState<Unit | null>(null);  // edit room drawer
+  const [assignUnit,    setAssignUnit]    = useState<Unit | null>(null);  // assign-tenant modal
+  const [addFloorOpen,  setAddFloorOpen]  = useState(false);
+  const [editFloor,     setEditFloor]     = useState<Floor | null>(null);
   const [deleteFloorTarget, setDeleteFloorTarget] = useState<Floor | null>(null);
-  const [addRoomFloor, setAddRoomFloor] = useState<Floor | null>(null);
+  const [addRoomFloor,  setAddRoomFloor]  = useState<Floor | null>(null);
 
-  const floors = useMemo(() => [...(floorsData?.data ?? [])].sort((a, b) => b.floorNumber - a.floorNumber), [floorsData]);
+  const floors = useMemo(
+    () => [...(floorsData?.data ?? [])].sort((a, b) => b.floorNumber - a.floorNumber),
+    [floorsData]
+  );
   const unitsByFloor = useMemo(() => {
     const map = new Map<string, Unit[]>();
     for (const u of unitsData?.data ?? []) {
@@ -35,7 +46,7 @@ export function BuildingDiagram({ buildingId }: { buildingId: string }) {
     return map;
   }, [unitsData]);
 
-  const nextFloorNumber = floors.length ? Math.max(...floors.map((f) => f.floorNumber)) + 1 : 0;
+  const nextFloorNumber = floors.length ? Math.max(...floors.map(f => f.floorNumber)) + 1 : 0;
 
   const suggestedUnitNumber = (floor: Floor) => {
     const existing = unitsByFloor.get(floor.floorNumber.toString()) ?? [];
@@ -75,7 +86,7 @@ export function BuildingDiagram({ buildingId }: { buildingId: string }) {
         <EmptyState
           icon={<Layers3 className="size-6" />}
           title="No floors yet"
-          description="Add your first floor to start mapping out rooms — like laying the first slab of the building."
+          description="Add your first floor to start mapping out rooms."
           action={<Button icon={<Plus className="size-4" />} onClick={() => setAddFloorOpen(true)}>Add first floor</Button>}
         />
       ) : (
@@ -89,7 +100,9 @@ export function BuildingDiagram({ buildingId }: { buildingId: string }) {
                 loading={loading}
                 editable
                 index={i}
-                onRoomClick={setSelectedUnit}
+                onRoomClick={setEditUnit}
+                onRoomEdit={setEditUnit}
+                onRoomAssign={setAssignUnit}
                 onAddRoom={() => setAddRoomFloor(floor)}
                 onEditFloor={() => setEditFloor(floor)}
                 onDeleteFloor={() => setDeleteFloorTarget(floor)}
@@ -99,7 +112,19 @@ export function BuildingDiagram({ buildingId }: { buildingId: string }) {
         </div>
       )}
 
-      <RoomDetailDrawer unit={selectedUnit} open={!!selectedUnit} onClose={() => setSelectedUnit(null)} />
+      {/* Edit room drawer */}
+      <RoomDetailDrawer unit={editUnit} open={!!editUnit} onClose={() => setEditUnit(null)} />
+
+      {/* Assign tenant modal */}
+      {assignUnit && (
+        <AssignTenantModal
+          open={!!assignUnit}
+          onClose={() => setAssignUnit(null)}
+          unit={assignUnit}
+          buildingId={buildingId}
+          buildingName={buildingName}
+        />
+      )}
 
       <AddFloorModal open={addFloorOpen} onClose={() => setAddFloorOpen(false)} buildingId={buildingId} nextFloorNumber={nextFloorNumber} />
 
@@ -130,7 +155,7 @@ export function BuildingDiagram({ buildingId }: { buildingId: string }) {
         onConfirm={onConfirmDeleteFloor}
         loading={deletingFloor}
         title={`Delete ${deleteFloorTarget?.name}?`}
-        description="All vacant rooms on this floor will be removed too. Floors with occupied or reserved rooms can't be deleted."
+        description="All vacant rooms on this floor will be removed. Floors with occupied or reserved rooms can't be deleted."
         confirmLabel="Delete floor"
       />
     </div>
