@@ -91,9 +91,7 @@ export class PublicUseCases implements IPublicUseCases {
     this.unitRepo.update(id, { viewCount: (unit.viewCount ?? 0) + 1 }).catch(() => {});
     return {
       ...(unit as UnitResponseDTO),
-      // building: { _id: building._id!, name: building.name, type: building.type, location: building.location, amenities: building.amenities, images: building.images },
       building: { _id: building._id!, name: building.name, slug: building.slug, type: building.type, location: building.location, amenities: building.amenities, images: building.images },
-
     };
   }
 

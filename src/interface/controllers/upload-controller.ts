@@ -4,7 +4,7 @@ import { cloudinaryService } from '../../infrastructure/services/cloudinary.serv
 import { BadRequestError } from '../../shared/error/app-error';
 
 function uniqueName(original: string): string {
-  const ext = original.match(/\.[^/.]+$/)?.at(0) ?? '.jpg';
+  const ext = original.match(/\.[^/.]+$/)?.[0] ?? '.jpg';
   return `${Date.now()}-${crypto.randomBytes(6).toString('hex')}${ext}`;
 }
 

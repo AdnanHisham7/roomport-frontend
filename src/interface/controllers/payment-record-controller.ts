@@ -51,7 +51,8 @@ export class PaymentRecordController {
   /** GET /payment-records/tenant/:tenantId */
   listByTenant = async (req: Request, res: Response): Promise<Response> => {
     try {
-      const records = await this.repo.findByTenantId(req.params.tenantId);
+      const tenantId = req.params.tenantId as string;
+      const records = await this.repo.findByTenantId(tenantId);
       return res.status(200).json({ data: records });
     } catch (e) { return this.handleError(res, e, 'Failed to fetch payment records.'); }
   };
@@ -59,7 +60,8 @@ export class PaymentRecordController {
   /** POST /payment-records/tenant/:tenantId */
   record = async (req: Request, res: Response): Promise<Response> => {
     try {
-      const tenant = await this.tenantRepo.findById(req.params.tenantId);
+      const tenantId = req.params.tenantId as string;
+      const tenant = await this.tenantRepo.findById(tenantId);
       if (!tenant) throw new NotFoundError('Tenant not found.');
 
       const { periodDate, status = 'paid', method, notes, receiptUrl, amount } = req.body;
@@ -88,7 +90,8 @@ export class PaymentRecordController {
   /** PATCH /payment-records/:id */
   update = async (req: Request, res: Response): Promise<Response> => {
     try {
-      const record = await this.repo.update(req.params.id, req.body);
+      const id = req.params.id as string;
+      const record = await this.repo.update(id, req.body);
       if (!record) throw new NotFoundError('Payment record not found.');
       return res.status(200).json({ message: 'Updated.', data: record });
     } catch (e) { return this.handleError(res, e, 'Failed to update payment record.'); }
@@ -97,7 +100,8 @@ export class PaymentRecordController {
   /** DELETE /payment-records/:id */
   remove = async (req: Request, res: Response): Promise<Response> => {
     try {
-      const ok = await this.repo.delete(req.params.id);
+      const id = req.params.id as string;
+      const ok = await this.repo.delete(id);
       if (!ok) throw new NotFoundError('Payment record not found.');
       return res.status(200).json({ message: 'Deleted.' });
     } catch (e) { return this.handleError(res, e, 'Failed to delete payment record.'); }
