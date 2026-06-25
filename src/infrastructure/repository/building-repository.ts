@@ -1,9 +1,9 @@
-import type { IBuilding } from "../../domain/entities/Building";
-import type { IBuildingRepository, BuildingListFilter } from "../../domain/repository/building-repository-impl";
-import { BuildingModel } from "../db/model/building-model";
+import type { IBuilding } from '../../domain/entities/Building';
+import type { IBuildingRepository, BuildingListFilter } from '../../domain/repository/building-repository-impl';
+import { BuildingModel } from '../db/model/building-model';
+import mongoose from 'mongoose';
 
 export class BuildingRepository implements IBuildingRepository {
-
   private toStringId(doc: { _id: unknown }): string {
     return (doc._id as { toString(): string }).toString();
   }
@@ -15,7 +15,6 @@ export class BuildingRepository implements IBuildingRepository {
       _id:       this.toStringId(obj),
       ownerId:   obj.ownerId?.toString()   ?? '',
       managerId: obj.managerId?.toString() ?? undefined,
-      addressId: obj.addressId?.toString() ?? undefined,
       documents: (obj.documents ?? []).map((d: any) => d?.toString()),
     };
   }
@@ -23,14 +22,14 @@ export class BuildingRepository implements IBuildingRepository {
   private buildQuery(filter?: BuildingListFilter): Record<string, any> {
     const query: Record<string, any> = {};
     if (!filter) return query;
-    if (filter.ownerId)     query.ownerId   = filter.ownerId;
-    if (filter.managerId)   query.managerId = filter.managerId;
-    if (filter.status)      query.status    = filter.status;
-    if (filter.type)        query.type      = filter.type;
+    if (filter.ownerId)    query.ownerId   = filter.ownerId;
+    if (filter.managerId)  query.managerId = filter.managerId;
+    if (filter.status)     query.status    = filter.status;
+    if (filter.type)       query.type      = filter.type;
     if (filter.isPublished !== undefined) query.isPublished = filter.isPublished;
     if (filter.isFeatured  !== undefined) query.isFeatured  = filter.isFeatured;
-    if (filter.city)        query['location.city']  = new RegExp(filter.city.trim(), 'i');
-    if (filter.state)       query['location.state'] = new RegExp(filter.state.trim(), 'i');
+    if (filter.city)       query['location.city']  = new RegExp(filter.city.trim(), 'i');
+    if (filter.state)      query['location.state'] = new RegExp(filter.state.trim(), 'i');
     if (filter.search) {
       const re = new RegExp(filter.search.trim(), 'i');
       query.$or = [{ name: re }, { 'location.city': re }, { 'location.address': re }];
@@ -39,9 +38,32 @@ export class BuildingRepository implements IBuildingRepository {
   }
 
   async findById(id: string): Promise<IBuilding | null> {
+    if (!mongoose.isValidObjectId(id)) return null;
     const doc = await BuildingModel.findById(id).lean();
     if (!doc) return null;
     return this.toEntity(doc);
+  }
+
+  async findByIdOrSlug(idOrSlug: string): Promise<IBuilding | null> {
+    const isObjectId = mongoose.isValidObjectId(idOrSlug);
+    const query = isObjectId
+      ? { $or: [{ _id: idOrSlug }, { slug: idOrSlug }] }
+      : { slug: idOrSlug };
+    const doc = await BuildingModel.findOne(query).lean();
+    if (!doc) return null;
+    return this.toEntity(doc);
+  }
+
+  async findBySlug(slug: string): Promise<IBuilding | null> {
+    const doc = await BuildingModel.findOne({ slug }).lean();
+    if (!doc) return null;
+    return this.toEntity(doc);
+  }
+
+  async isSlugTaken(slug: string, excludeId?: string): Promise<boolean> {
+    const query: any = { slug };
+    if (excludeId) query._id = { $ne: excludeId };
+    return !!(await BuildingModel.exists(query));
   }
 
   async findAll(filter?: BuildingListFilter): Promise<IBuilding[]> {
@@ -49,12 +71,7 @@ export class BuildingRepository implements IBuildingRepository {
     return docs.map((d) => this.toEntity(d));
   }
 
-  async findAllPaginated(
-    filter: BuildingListFilter,
-    skip: number,
-    limit: number,
-    sort: Record<string, 1 | -1> = { createdAt: -1 }
-  ): Promise<{ data: IBuilding[]; total: number }> {
+  async findAllPaginated(filter: BuildingListFilter, skip: number, limit: number, sort: Record<string, 1|-1> = { createdAt: -1 }): Promise<{ data: IBuilding[]; total: number }> {
     const query = this.buildQuery(filter);
     const [docs, total] = await Promise.all([
       BuildingModel.find(query).sort(sort).skip(skip).limit(limit).lean(),
@@ -78,9 +95,7 @@ export class BuildingRepository implements IBuildingRepository {
   }
 
   async update(id: string, data: Partial<IBuilding>): Promise<IBuilding | null> {
-    const doc = await BuildingModel
-      .findByIdAndUpdate(id, { $set: data }, { new: true })
-      .lean();
+    const doc = await BuildingModel.findByIdAndUpdate(id, { $set: data }, { new: true }).lean();
     if (!doc) return null;
     return this.toEntity(doc);
   }

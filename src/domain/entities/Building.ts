@@ -16,9 +16,10 @@ export interface IBuildingLocation {
 export interface IBuilding {
   _id?:             string;
   name:             string;
+  slug?:            string;
   type:             BuildingType;
   status:           BuildingStatus;
-  location:         IBuildingLocation;   // embedded — replaces addressId
+  location:         IBuildingLocation;
   ownerId:          string;
   managerId?:       string;
   totalUnits:       number;
@@ -35,9 +36,19 @@ export interface IBuilding {
   documents?:       string[];
   description?:     string;
   yearOfBuild?:     string;
-  isPublished:      boolean;   // controls public marketplace visibility (builder-controlled)
-  isFeatured:       boolean;   // controls homepage spotlight (super-admin-controlled)
+  isPublished:      boolean;
+  isFeatured:       boolean;
   viewCount?:       number;
   createdAt?:       Date;
   updatedAt?:       Date;
+}
+
+export function generateSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 60);
 }
