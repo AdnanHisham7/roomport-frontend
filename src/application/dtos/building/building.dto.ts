@@ -1,4 +1,4 @@
-import { BuildingStatus, BuildingType, IBuildingLocation } from "../../../domain/entities/Building";
+import { BuildingStatus, BuildingType, IBuildingLocation } from '../../../domain/entities/Building';
 
 export interface CreateBuildingDTO {
   name:          string;
@@ -50,6 +50,7 @@ export interface UpdateBuildingDTO {
 export interface BuildingResponseDTO {
   _id:           string;
   name:          string;
+  slug?:         string;
   type:          BuildingType;
   status:        BuildingStatus;
   location:      IBuildingLocation;

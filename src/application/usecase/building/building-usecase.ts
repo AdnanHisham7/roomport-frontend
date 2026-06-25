@@ -1,16 +1,26 @@
-import { IBuilding } from "../../../domain/entities/Building";
-import { IBuildingRepository } from "../../../domain/repository/building-repository-impl";
-import { IFloorUseCases } from "../../interface/floor/floor-usecase.impl";
-import { IBuildingUseCases } from "../../interface/building/building-usecase.impl";
-import { BadRequestError, ForbiddenError, NotFoundError, PaymentRequiredError } from "../../../shared/error/app-error";
-import { ISubscriptionRepository } from "../../../domain/repository/subscription-repository-impl";
-import { BuildingOccupancyStatsDTO, BuildingResponseDTO, CreateBuildingDTO, UpdateBuildingDTO } from "../../dtos/building/building.dto";
-import { IActivityLogUsecase } from "../../usecase/activity-log/activity-log-usecase";
-import { ActivityLogAction, ActivityLogEntityType } from "../../../domain/entities/ActivityLog";
-import { IUnitRepository } from "../../../domain/repository/unit-repository-impl";
+import { IBuilding, generateSlug } from '../../../domain/entities/Building';
+import { IBuildingRepository } from '../../../domain/repository/building-repository-impl';
+import { IFloorUseCases } from '../../interface/floor/floor-usecase.impl';
+import { IBuildingUseCases } from '../../interface/building/building-usecase.impl';
+import { BadRequestError, ForbiddenError, NotFoundError, PaymentRequiredError } from '../../../shared/error/app-error';
+import { ISubscriptionRepository } from '../../../domain/repository/subscription-repository-impl';
+import { BuildingOccupancyStatsDTO, BuildingResponseDTO, CreateBuildingDTO, UpdateBuildingDTO } from '../../dtos/building/building.dto';
+import { IActivityLogUsecase } from '../../usecase/activity-log/activity-log-usecase';
+import { ActivityLogAction, ActivityLogEntityType } from '../../../domain/entities/ActivityLog';
+import { IUnitRepository } from '../../../domain/repository/unit-repository-impl';
 
 function toResponse(b: IBuilding): BuildingResponseDTO {
-  return { _id: b._id!, name: b.name, type: b.type, status: b.status, location: b.location, ownerId: b.ownerId, managerId: b.managerId, totalUnits: b.totalUnits, totalFloors: b.totalFloors, sqft: b.sqft, lift: b.lift, helipad: b.helipad, nearAirport: b.nearAirport, nearRailwayStation: b.nearRailwayStation, nearBusStand: b.nearBusStand, nearPark: b.nearPark, amenities: b.amenities, images: b.images, documents: b.documents, description: b.description, yearOfBuild: b.yearOfBuild, isPublished: b.isPublished ?? true, isFeatured: b.isFeatured ?? false, viewCount: b.viewCount ?? 0, createdAt: b.createdAt, updatedAt: b.updatedAt };
+  return {
+    _id: b._id!, name: b.name, slug: b.slug, type: b.type, status: b.status,
+    location: b.location, ownerId: b.ownerId, managerId: b.managerId,
+    totalUnits: b.totalUnits, totalFloors: b.totalFloors, sqft: b.sqft,
+    lift: b.lift, helipad: b.helipad, nearAirport: b.nearAirport,
+    nearRailwayStation: b.nearRailwayStation, nearBusStand: b.nearBusStand,
+    nearPark: b.nearPark, amenities: b.amenities, images: b.images,
+    documents: b.documents, description: b.description, yearOfBuild: b.yearOfBuild,
+    isPublished: b.isPublished ?? true, isFeatured: b.isFeatured ?? false,
+    viewCount: b.viewCount ?? 0, createdAt: b.createdAt, updatedAt: b.updatedAt,
+  };
 }
 
 export class BuildingUseCases implements IBuildingUseCases {
@@ -24,10 +34,19 @@ export class BuildingUseCases implements IBuildingUseCases {
 
   private async assertOwnership(building: IBuilding, requesterId?: string, requesterRole?: string) {
     if (!requesterId || !requesterRole || requesterRole === 'super_admin') return;
-    const allowed = building.ownerId === requesterId || building.managerId === requesterId;
-    if (!allowed) {
+    if (building.ownerId !== requesterId && building.managerId !== requesterId) {
       throw new ForbiddenError('You do not have access to this building.', 'Only the building owner or its assigned manager can manage it.');
     }
+  }
+
+  private async uniqueSlug(name: string, excludeId?: string): Promise<string> {
+    const base = generateSlug(name);
+    if (!(await this.buildingRepo.isSlugTaken(base, excludeId))) return base;
+    for (let i = 1; i < 20; i++) {
+      const candidate = `${base}-${i}`;
+      if (!(await this.buildingRepo.isSlugTaken(candidate, excludeId))) return candidate;
+    }
+    return `${base}-${Date.now()}`;
   }
 
   async createFloors(floorData: { buildingId: string; floorNumber: number; name: string; totalUnits: number; }[], requesterId?: string, requesterRole?: string): Promise<void> {
@@ -39,47 +58,32 @@ export class BuildingUseCases implements IBuildingUseCases {
   async create(data: CreateBuildingDTO): Promise<BuildingResponseDTO> {
     if (data.totalUnits < 1)  throw new BadRequestError('totalUnits must be at least 1.');
     if (data.totalFloors < 1) throw new BadRequestError('totalFloors must be at least 1.');
-    if (!data.location?.address || !data.location?.city || !data.location?.state || !data.location?.pincode) throw new BadRequestError('location (address, city, state, pincode) is required.');
+    if (!data.location?.address || !data.location?.city || !data.location?.state || !data.location?.pincode)
+      throw new BadRequestError('location (address, city, state, pincode) is required.');
 
     const subscription = await this.subscriptionRepo.findByUserId(data.ownerId);
     if (!subscription || (subscription.status !== 'active' && subscription.status !== 'paid')) {
       throw new PaymentRequiredError('Active subscription required to create a building.', 'Please subscribe to a plan.');
     }
     const userBuildings = await this.buildingRepo.findByOwnerId(data.ownerId);
-    const currentBuildingCount = userBuildings.length;
-    const currentUnitCount = userBuildings.reduce((sum, b) => sum + b.totalUnits, 0);
-
-    if (currentBuildingCount + 1 > subscription.numberOfBuildings) {
+    if (userBuildings.length + 1 > subscription.numberOfBuildings) {
       throw new PaymentRequiredError('Building limit exceeded.', 'Please upgrade your plan to create more buildings.');
     }
+    const currentUnitCount = userBuildings.reduce((sum, b) => sum + b.totalUnits, 0);
     if (currentUnitCount + data.totalUnits > subscription.numberOfUnits) {
-       throw new PaymentRequiredError('Unit limit exceeded.', 'Please upgrade your plan unit limits to support this newly created building.');
+      throw new PaymentRequiredError('Unit limit exceeded.', 'Please upgrade your plan unit limits.');
     }
 
-    // Building doc is created with totalUnits/totalFloors = 0 here; FloorUseCases.create
-    // increments both as each floor (and its rooms) is generated right after, so the counters
-    // always reflect real persisted data rather than a number the client merely claimed.
+    const slug = await this.uniqueSlug(data.name);
+
     const b = await this.buildingRepo.create({
-      ...data,
-      lift: data.lift ?? false,
-      helipad: data.helipad ?? false,
-      status: 'active',
-      isPublished: data.isPublished ?? true,
-      isFeatured: false,
-      viewCount: 0,
-      totalFloors: 0,
-      totalUnits: 0,
+      ...data, slug,
+      lift: data.lift ?? false, helipad: data.helipad ?? false,
+      status: 'active', isPublished: data.isPublished ?? true,
+      isFeatured: false, viewCount: 0, totalFloors: 0, totalUnits: 0,
     });
 
-    this.activityLogUc.logActivity({
-      action: ActivityLogAction.BUILDING_CREATED,
-      entityType: ActivityLogEntityType.BUILDING,
-      entityId: b._id,
-      buildingId: b._id,
-      userId: b.ownerId as any,
-      metadata: { name: b.name, totalUnits: data.totalUnits }
-    }).catch(console.error);
-
+    this.activityLogUc.logActivity({ action: ActivityLogAction.BUILDING_CREATED, entityType: ActivityLogEntityType.BUILDING, entityId: b._id, buildingId: b._id, userId: b.ownerId as any, metadata: { name: b.name, totalUnits: data.totalUnits } }).catch(console.error);
     return toResponse(b);
   }
 
@@ -96,53 +100,33 @@ export class BuildingUseCases implements IBuildingUseCases {
   async update(id: string, data: UpdateBuildingDTO, requesterId?: string, requesterRole?: string): Promise<BuildingResponseDTO> {
     const prev = await this.buildingRepo.findById(id);
     if (!prev) throw new NotFoundError('Building not found.');
-
     await this.assertOwnership(prev, requesterId, requesterRole);
 
-    // totalUnits/totalFloors are derived counters — never let a client overwrite them directly.
     const { totalUnits, totalFloors, ...safeData } = data as any;
-    if (requesterRole !== 'super_admin') {
-      delete (safeData as any).isFeatured;   // only super-admin can feature a listing
+    if (requesterRole !== 'super_admin') delete (safeData as any).isFeatured;
+
+    // Re-generate slug only when name changes
+    if (safeData.name && safeData.name !== prev.name) {
+      safeData.slug = await this.uniqueSlug(safeData.name, id);
     }
 
     const updated = await this.buildingRepo.update(id, safeData);
-
-    this.activityLogUc.logActivity({
-      action: ActivityLogAction.BUILDING_UPDATED,
-      entityType: ActivityLogEntityType.BUILDING,
-      entityId: updated!._id,
-      buildingId: updated!._id,
-      userId: (requesterId || updated!.ownerId) as any,
-      metadata: { action: 'update', changes_keys: Object.keys(safeData) }
-    }).catch(console.error);
-
+    this.activityLogUc.logActivity({ action: ActivityLogAction.BUILDING_UPDATED, entityType: ActivityLogEntityType.BUILDING, entityId: updated!._id, buildingId: updated!._id, userId: (requesterId || updated!.ownerId) as any, metadata: { changes_keys: Object.keys(safeData) } }).catch(console.error);
     return toResponse(updated!);
   }
 
   async delete(id: string, requesterId?: string, requesterRole?: string): Promise<void> {
     const prev = await this.buildingRepo.findById(id);
     if (!prev) throw new NotFoundError('Building not found.');
-
     await this.assertOwnership(prev, requesterId, requesterRole);
 
     const occupied = await this.unitRepo.countByBuildingId(id, { isOccupied: true });
-    if (occupied > 0) {
-      throw new BadRequestError(
-        `This building still has ${occupied} occupied room(s).`,
-        'Vacate every tenant before deleting the building.'
-      );
-    }
+    if (occupied > 0) throw new BadRequestError(`This building still has ${occupied} occupied room(s).`, 'Vacate every tenant before deleting the building.');
 
     await this.unitRepo.findByBuildingId(id).then(units => Promise.all(units.map(u => this.unitRepo.delete(u._id!))));
     await this.buildingRepo.delete(id);
 
-    this.activityLogUc.logActivity({
-      action: ActivityLogAction.BUILDING_DELETED,
-      entityType: ActivityLogEntityType.BUILDING,
-      entityId: id,
-      buildingId: id,
-      userId: (requesterId || prev.ownerId) as any,
-    }).catch(console.error);
+    this.activityLogUc.logActivity({ action: ActivityLogAction.BUILDING_DELETED, entityType: ActivityLogEntityType.BUILDING, entityId: id, buildingId: id, userId: (requesterId || prev.ownerId) as any }).catch(console.error);
   }
 
   async getOccupancyStats(ownerId?: string): Promise<BuildingOccupancyStatsDTO> {
@@ -156,12 +140,10 @@ export class BuildingUseCases implements IBuildingUseCases {
       const occupancyRate = totalRoomsActual > 0 ? Math.round((occupiedUnits / totalRoomsActual) * 1000) / 10 : 0;
       return { _id: b._id!, name: b.name, totalUnits: totalRoomsActual, occupiedUnits, vacantUnits, occupancyRate };
     }));
-
     const totalUnits = byBuilding.reduce((s, b) => s + b.totalUnits, 0);
     const occupiedUnits = byBuilding.reduce((s, b) => s + b.occupiedUnits, 0);
     const vacantUnits = Math.max(0, totalUnits - occupiedUnits);
     const occupancyRate = totalUnits > 0 ? Math.round((occupiedUnits / totalUnits) * 1000) / 10 : 0;
-
     return { totalBuildings: buildings.length, totalUnits, occupiedUnits, vacantUnits, occupancyRate, byBuilding };
   }
 }

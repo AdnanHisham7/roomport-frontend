@@ -14,7 +14,7 @@ export interface PublicBuildingDetailDTO extends PublicBuildingCardDTO {
 }
 
 export interface PublicUnitDetailDTO extends UnitResponseDTO {
-  building: { _id: string; name: string; type: string; location: BuildingResponseDTO['location']; amenities?: string[]; images?: string[] };
+  building: { _id: string; name: string; slug?:string; type: string; location: BuildingResponseDTO['location']; amenities?: string[]; images?: string[] };
 }
 
 export interface PublicFiltersDTO {
