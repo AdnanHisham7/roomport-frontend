@@ -19,11 +19,7 @@ const rawBaseQuery = fetchBaseQuery({
 
 const publicPaths = ['/auth/login', '/auth/register', '/auth/refresh-token', '/system/bootstrap'];
 
-const baseQueryWithReauth: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQueryError> = async (
-  args,
-  api,
-  extraOptions
-) => {
+const baseQueryWithReauth: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQueryError> = async (args, api, extraOptions) => {
   await mutex.waitForUnlock();
   let result = await rawBaseQuery(args, api, extraOptions);
 
@@ -36,11 +32,7 @@ const baseQueryWithReauth: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQue
       try {
         const refreshToken = (api.getState() as RootState).auth.refreshToken;
         if (refreshToken) {
-          const refreshResult = await rawBaseQuery(
-            { url: '/auth/refresh-token', method: 'POST', body: { refreshToken } },
-            api,
-            extraOptions
-          );
+          const refreshResult = await rawBaseQuery({ url: '/auth/refresh-token', method: 'POST', body: { refreshToken } }, api, extraOptions);
           if (refreshResult.data) {
             const payload = refreshResult.data as { data: { accessToken: string; refreshToken: string } };
             api.dispatch(setTokens(payload.data));
@@ -59,7 +51,6 @@ const baseQueryWithReauth: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQue
       result = await rawBaseQuery(args, api, extraOptions);
     }
   }
-
   return result;
 };
 
@@ -70,7 +61,7 @@ export const baseApi = createApi({
     'Profile', 'Building', 'Floor', 'Unit', 'Tenant', 'Agreement', 'Document',
     'Expense', 'Notification', 'Managers', 'ActivityLog', 'Subscription', 'Inquiry',
     'SuperAdminStats', 'SuperAdminBuilders', 'SuperAdminBuildings', 'SuperAdminSettings',
-    'Public', 'Analytics',
+    'Public', 'Analytics', 'PaymentRecord',
   ],
   endpoints: () => ({}),
 });
