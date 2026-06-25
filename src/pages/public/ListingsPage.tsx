@@ -52,8 +52,8 @@ export default function ListingsPage() {
       {!isLoading && !!data?.data.length && (
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {data.data.map((b, i) => (
-            <motion.div key={b._id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}>
-              <Link to={`/listings/${b._id}`}>
+            <motion.div key={b.slug} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}>
+              <Link to={`/listings/${b.slug}`}>
                 <Card hover padding="none" className="overflow-hidden h-full">
                   <div className="relative h-40 bg-gradient-to-br from-crimson-100 to-paper-deep">
                     {b.images?.[0] ? <img src={b.images[0]} alt={b.name} className="size-full object-cover" /> : <div className="flex size-full items-center justify-center text-crimson-200"><Building2 className="size-10" /></div>}

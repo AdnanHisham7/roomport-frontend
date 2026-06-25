@@ -53,8 +53,8 @@ export default function LandingPage() {
           </div>
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {featuredData.data.map((b, i) => (
-              <motion.div key={b._id} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
-                <Link to={`/listings/${b._id}`}>
+              <motion.div key={b.slug} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+                <Link to={`/listings/${b.slug}`}>
                   <Card hover padding="none" className="overflow-hidden">
                     <div className="relative h-44 bg-gradient-to-br from-crimson-100 to-paper-deep">
                       {b.images?.[0] ? <img src={b.images[0]} alt={b.name} className="size-full object-cover" /> : <div className="flex size-full items-center justify-center text-crimson-200"><Building2 className="size-12" /></div>}
