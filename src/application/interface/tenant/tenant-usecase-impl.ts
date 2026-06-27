@@ -1,5 +1,4 @@
-import { CreateTenantDTO, TenantResponseDTO, UpdateTenantDTO } from "../../dtos/tenant/tenant.dto";
-
+import { CreateTenantDTO, TenantResponseDTO, UpdateTenantDTO } from '../../dtos/tenant/tenant.dto';
 
 export interface ITenantUseCases {
   create(data: CreateTenantDTO): Promise<TenantResponseDTO>;
@@ -8,4 +7,5 @@ export interface ITenantUseCases {
   update(id: string, data: UpdateTenantDTO): Promise<TenantResponseDTO>;
   delete(id: string): Promise<void>;
   getTenantLeases(tenantId: string): Promise<any[]>;
+  transferTenant(tenantId: string, targetUnitId: string, adminUserId: string): Promise<{ tenant: TenantResponseDTO; message: string }>;
 }

@@ -1,11 +1,11 @@
-import { ITenant } from "../../../domain/entities/Tenant";
-import { ITenantRepository } from "../../../domain/repository/tenant-repository-impl";
-import { BadRequestError, NotFoundError } from "../../../shared/error/app-error";
-import { CreateTenantDTO, TenantResponseDTO, UpdateTenantDTO } from "../../dtos/tenant/tenant.dto";
-import { ITenantUseCases } from "../../interface/tenant/tenant-usecase-impl";
-import { IUnitRepository } from "../../../domain/repository/unit-repository-impl";
-import { IActivityLogUsecase } from "../../usecase/activity-log/activity-log-usecase";
-import { ActivityLogAction, ActivityLogEntityType } from "../../../domain/entities/ActivityLog";
+import { ITenant } from '../../../domain/entities/Tenant';
+import { ITenantRepository } from '../../../domain/repository/tenant-repository-impl';
+import { BadRequestError, NotFoundError } from '../../../shared/error/app-error';
+import { CreateTenantDTO, TenantResponseDTO, UpdateTenantDTO } from '../../dtos/tenant/tenant.dto';
+import { ITenantUseCases } from '../../interface/tenant/tenant-usecase-impl';
+import { IUnitRepository } from '../../../domain/repository/unit-repository-impl';
+import { IActivityLogUsecase } from '../../usecase/activity-log/activity-log-usecase';
+import { ActivityLogAction, ActivityLogEntityType } from '../../../domain/entities/ActivityLog';
 
 function toResponse(t: ITenant): TenantResponseDTO {
   return {
@@ -47,6 +47,35 @@ export class TenantUseCases implements ITenantUseCases {
       throw new BadRequestError('rentAmount must be a positive number.', 'Enter a valid rent amount.');
     }
 
+    // Validate agreement dates BEFORE creating the tenant to prevent orphan records
+    if (data.agreementStartDate && data.agreementEndDate) {
+      const start = new Date(data.agreementStartDate);
+      const end   = new Date(data.agreementEndDate);
+      if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+        throw new BadRequestError('Invalid agreement dates provided.', 'Enter valid start and end dates for the agreement.');
+      }
+      if (end <= start) {
+        throw new BadRequestError(
+          'Agreement end date must be after the start date.',
+          'Please set the end date to a date after the start date.'
+        );
+      }
+    }
+
+    // Check if unit is already occupied before attempting creation
+    if (data.unitId) {
+      const unit = await this.unitRepo.findById(data.unitId);
+      if (!unit) {
+        throw new NotFoundError('Room not found.', 'The selected room does not exist.');
+      }
+      if (unit.isOccupied || unit.status === 'occupied') {
+        throw new BadRequestError(
+          'This room is already occupied.',
+          'Please select a different room or vacate the current tenant first.'
+        );
+      }
+    }
+
     const tenant = await this.tenantRepository.create({
       ...data,
       status: 'pending',
@@ -57,13 +86,14 @@ export class TenantUseCases implements ITenantUseCases {
     }
 
     this.activityLogUc.logActivity({
-      action: ActivityLogAction.TENANT_CREATED,
-      entityType: ActivityLogEntityType.TENANT,
-      entityId: tenant._id,
-      buildingId: tenant.buildingId,
-      unitId: tenant.unitId,
-      userId: tenant.userId as any,
-      metadata: { firstName: tenant.firstName, rentAmount: tenant.rentAmount }
+      action:      ActivityLogAction.TENANT_CREATED,
+      entityType:  ActivityLogEntityType.TENANT,
+      entityId:    tenant._id,
+      buildingId:  tenant.buildingId,
+      unitId:      tenant.unitId,
+      userId:      tenant.userId as any,
+      description: `Tenant ${tenant.firstName} ${tenant.lastName} created${tenant.unitId ? ` and assigned to unit` : ''}. Rent: ₹${tenant.rentAmount}/${tenant.rentType}.`,
+      metadata:    { firstName: tenant.firstName, lastName: tenant.lastName, rentAmount: tenant.rentAmount, rentType: tenant.rentType },
     }).catch(console.error);
 
     return toResponse(tenant);
@@ -85,33 +115,35 @@ export class TenantUseCases implements ITenantUseCases {
     if (!existing) throw new NotFoundError('Tenant not found.', 'Check the tenant ID and try again.');
 
     if (data.unitId && data.unitId !== existing.unitId) {
-       if (existing.unitId) await this.unitRepo.update(existing.unitId, { isOccupied: false, status: 'available' });
-       await this.unitRepo.update(data.unitId, { isOccupied: true, status: 'occupied' });
+      if (existing.unitId) await this.unitRepo.update(existing.unitId, { isOccupied: false, status: 'available' });
+      await this.unitRepo.update(data.unitId, { isOccupied: true, status: 'occupied' });
     } else if (data.status === 'inactive' || data.status === 'blacklisted') {
-       if (existing.unitId) await this.unitRepo.update(existing.unitId, { isOccupied: false, status: 'available' });
+      if (existing.unitId) await this.unitRepo.update(existing.unitId, { isOccupied: false, status: 'available' });
     }
 
     const updated = await this.tenantRepository.update(id, data as any);
 
-    if ((data.paidAt && data.paidAt !== existing.paidAt) || (data.status === 'active' && existing.status !== 'active')) {
-       this.activityLogUc.logActivity({
-          action: ActivityLogAction.RENT_PAYMENT_COMPLETED,
-          entityType: ActivityLogEntityType.PAYMENT,
-          entityId: updated!._id,
-          buildingId: updated!.buildingId,
-          unitId: updated!.unitId,
-          userId: updated!.userId as any,
-          metadata: { rentAmount: updated!.rentAmount }
-       }).catch(console.error);
+    if (data.status && data.status !== existing.status) {
+      this.activityLogUc.logActivity({
+        action:      ActivityLogAction.TENANT_STATUS_CHANGED,
+        entityType:  ActivityLogEntityType.TENANT,
+        entityId:    updated!._id,
+        buildingId:  updated!.buildingId,
+        unitId:      updated!.unitId,
+        userId:      updated!.userId as any,
+        description: `Tenant ${updated!.firstName} ${updated!.lastName} status changed from ${existing.status} to ${data.status}.`,
+        metadata:    { oldStatus: existing.status, newStatus: data.status },
+      }).catch(console.error);
     } else {
-       this.activityLogUc.logActivity({
-          action: ActivityLogAction.TENANT_UPDATED,
-          entityType: ActivityLogEntityType.TENANT,
-          entityId: updated!._id,
-          buildingId: updated!.buildingId,
-          unitId: updated!.unitId,
-          userId: updated!.userId as any,
-       }).catch(console.error);
+      this.activityLogUc.logActivity({
+        action:      ActivityLogAction.TENANT_UPDATED,
+        entityType:  ActivityLogEntityType.TENANT,
+        entityId:    updated!._id,
+        buildingId:  updated!.buildingId,
+        unitId:      updated!.unitId,
+        userId:      updated!.userId as any,
+        description: `Tenant ${updated!.firstName} ${updated!.lastName} profile updated.`,
+      }).catch(console.error);
     }
 
     return toResponse(updated!);
@@ -120,31 +152,94 @@ export class TenantUseCases implements ITenantUseCases {
   async delete(id: string): Promise<void> {
     const existing = await this.tenantRepository.findById(id);
     if (!existing) throw new NotFoundError('Tenant not found.', 'Check the tenant ID and try again.');
-    
+
     if (existing.unitId) {
-       await this.unitRepo.update(existing.unitId, { isOccupied: false, status: 'available' });
+      await this.unitRepo.update(existing.unitId, { isOccupied: false, status: 'available' });
     }
 
     await this.tenantRepository.delete(id);
 
     this.activityLogUc.logActivity({
-       action: ActivityLogAction.TENANT_DELETED,
-       entityType: ActivityLogEntityType.TENANT,
-       entityId: existing._id,
-       buildingId: existing.buildingId,
-       unitId: existing.unitId,
-       userId: existing.userId as any,
+      action:      ActivityLogAction.TENANT_DELETED,
+      entityType:  ActivityLogEntityType.TENANT,
+      entityId:    existing._id,
+      buildingId:  existing.buildingId,
+      unitId:      existing.unitId,
+      userId:      existing.userId as any,
+      description: `Tenant ${existing.firstName} ${existing.lastName} was deleted.`,
     }).catch(console.error);
   }
 
-  // ── GET TENANT LEASES ──────────────────────────────────────────────────────────
-  // Placeholder — will be populated when Lease module is built
   async getTenantLeases(tenantId: string): Promise<any[]> {
     const exists = await this.tenantRepository.existsById(tenantId);
     if (!exists) {
       throw new NotFoundError('Tenant not found.', 'Check the tenant ID and try again.');
     }
-    // Lease repo will be injected here in the Lease module
     return [];
+  }
+
+  async transferTenant(tenantId: string, targetUnitId: string, adminUserId: string): Promise<{ tenant: TenantResponseDTO; message: string }> {
+    const tenant = await this.tenantRepository.findById(tenantId);
+    if (!tenant) throw new NotFoundError('Tenant not found.');
+
+    const targetUnit = await this.unitRepo.findById(targetUnitId);
+    if (!targetUnit) throw new NotFoundError('Target room not found.');
+
+    if (targetUnit.status === 'under maintenance') {
+      throw new BadRequestError('Cannot transfer tenant to a room under maintenance.', 'Choose an available or occupied room.');
+    }
+
+    const sourceUnitId = tenant.unitId;
+    let displacedTenantInfo: string | null = null;
+
+    if (targetUnit.status === 'occupied' || targetUnit.isOccupied) {
+      // Swap: find the tenant in the target unit
+      const tenantsInTarget = await this.tenantRepository.findAll({ unitId: targetUnitId });
+      const targetTenant = tenantsInTarget.find(t => t._id !== tenantId);
+
+      if (targetTenant) {
+        // Move target tenant to source unit
+        await this.tenantRepository.update(targetTenant._id!, {
+          unitId: sourceUnitId ?? undefined,
+          buildingId: sourceUnitId ? tenant.buildingId : undefined,
+        } as any);
+
+        if (sourceUnitId) {
+          await this.unitRepo.update(sourceUnitId, { isOccupied: true, status: 'occupied' });
+        }
+
+        displacedTenantInfo = `${targetTenant.firstName} ${targetTenant.lastName} moved to ${sourceUnitId ? `room ${sourceUnitId}` : 'no room'}`;
+      }
+    } else {
+      // Target is available — vacate source
+      if (sourceUnitId) {
+        await this.unitRepo.update(sourceUnitId, { isOccupied: false, status: 'available' });
+      }
+    }
+
+    // Move tenant A to target unit
+    const updatedTenant = await this.tenantRepository.update(tenantId, {
+      unitId:     targetUnitId,
+      buildingId: targetUnit.buildingId,
+    } as any);
+
+    await this.unitRepo.update(targetUnitId, { isOccupied: true, status: 'occupied' });
+
+    this.activityLogUc.logActivity({
+      action:      ActivityLogAction.TENANT_TRANSFERRED,
+      entityType:  ActivityLogEntityType.TENANT,
+      entityId:    tenantId,
+      buildingId:  targetUnit.buildingId,
+      unitId:      targetUnitId,
+      userId:      adminUserId,
+      description: `Tenant ${tenant.firstName} ${tenant.lastName} transferred from unit ${sourceUnitId ?? 'none'} to unit ${targetUnit.unitNumber}.${displacedTenantInfo ? ` ${displacedTenantInfo}.` : ''}`,
+      metadata:    { fromUnitId: sourceUnitId, toUnitId: targetUnitId, displacedTenantInfo },
+    }).catch(console.error);
+
+    const message = displacedTenantInfo
+      ? `Tenant transferred. ${displacedTenantInfo}.`
+      : `Tenant transferred to room ${targetUnit.unitNumber}. Previous room is now available.`;
+
+    return { tenant: toResponse(updatedTenant!), message };
   }
 }

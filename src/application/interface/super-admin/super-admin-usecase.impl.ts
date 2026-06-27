@@ -18,5 +18,5 @@ export interface ISuperAdminUseCases {
   getSettings(): Promise<IPlatformSetting>;
   updateSettings(data: Partial<IPlatformSetting>, updatedBy: string): Promise<IPlatformSetting>;
   listSubscriptions(filter: { userId?: string; status?: string }, page: number, limit: number): Promise<PaginatedResult<SubscriptionResponseDTO & { ownerName?: string }>>;
-  updateSubscription(id: string, data: AdminUpdateSubscriptionDTO): Promise<SubscriptionResponseDTO>;
+  updateSubscription(id: string, data: AdminUpdateSubscriptionDTO, adminUserId: string): Promise<SubscriptionResponseDTO>;
 }

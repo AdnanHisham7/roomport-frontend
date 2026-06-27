@@ -15,7 +15,7 @@ import {
   buildingController,
   floorController,
   expenseController,
-  paymentController,
+  // paymentController,
   unitController,
   userController,
   activityLogController,
@@ -106,7 +106,7 @@ const createApp = (): Application => {
   app.use("/api/v1/tenants", createTenantRouter(tenantController));
   app.use("/api/v1/documents", createDocumentRouter(documentController));
   app.use("/api/v1/agreements", createAgreementRouter(agreementController));
-  app.use("/api/v1/payments", createPaymentRouter(paymentController));
+  // app.use("/api/v1/payments", createPaymentRouter(paymentController));
   app.use("/api/v1/units", createUnitRouter(unitController));
   app.use("/api/v1/expenses", createExpenseRouter(expenseController));
   app.use(

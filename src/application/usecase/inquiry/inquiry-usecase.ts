@@ -39,9 +39,12 @@ export class InquiryUseCases implements IInquiryUseCases {
     if (!building) throw new NotFoundError('Listing not found.');
     if (!building.isPublished) throw new BadRequestError('This listing is not currently accepting inquiries.');
 
+    let unitDoc: any = null; 
+
     if (data.unitId) {
       const unit = await this.unitRepo.findById(data.unitId);
       if (!unit || unit.buildingId !== data.buildingId) throw new BadRequestError('Invalid room reference.');
+      unitDoc = unit; // Save reference
     }
 
     const inquiry = await this.inquiryRepo.create({
@@ -55,10 +58,12 @@ export class InquiryUseCases implements IInquiryUseCases {
       status: 'new',
     });
 
+    const unitSuffix = unitDoc?.unitNumber ? ` (${unitDoc.unitNumber})` : '';
+
     this.notificationUc.sendNotification({
       userId: building.ownerId,
       title: 'New inquiry received',
-      message: `${data.name} is interested in "${building.name}"${data.unitId ? ' (specific room)' : ''}.`,
+      message: `${data.name} is interested in "${building.name}"${unitSuffix}.`,
       notificationType: NotificationType.GENERAL,
       channel: NotificationChannel.EMAIL,
       buildingId: building._id,

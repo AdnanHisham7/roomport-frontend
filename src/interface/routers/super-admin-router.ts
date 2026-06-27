@@ -10,6 +10,8 @@ export const createSuperAdminRouter = (controller: SuperAdminController): Router
 
   router.get('/stats', controller.getStats);
 
+  // Builder management - manual registration flow
+  router.post('/builders/register', controller.registerBuilder);
   router.get('/builders', controller.listBuilders);
   router.get('/builders/:id', controller.getBuilderDetail);
   router.patch('/builders/:id/status', controller.updateBuilderStatus);

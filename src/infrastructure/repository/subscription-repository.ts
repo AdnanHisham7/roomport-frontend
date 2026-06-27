@@ -1,6 +1,6 @@
-import type { ISubscription } from '../../domain/entities/Subscription';
+import type { ISubscription, ISubscriptionPeriod } from '../../domain/entities/Subscription';
 import type { ISubscriptionRepository, SubscriptionListFilter } from '../../domain/repository/subscription-repository-impl';
-import { SubscriptionModel } from '../db/model/subscription-model';
+import { SubscriptionModel, SubscriptionPeriodModel } from '../db/model/subscription-model';
 
 export class SubscriptionRepository implements ISubscriptionRepository {
   private toStringId(doc: { _id: unknown }): string {
@@ -11,8 +11,19 @@ export class SubscriptionRepository implements ISubscriptionRepository {
     const obj = doc.toObject ? doc.toObject() : { ...doc };
     return {
       ...obj,
-      _id: this.toStringId(obj),
+      _id:    this.toStringId(obj),
       userId: obj.userId?.toString() ?? undefined,
+    };
+  }
+
+  private toPeriodEntity(doc: any): ISubscriptionPeriod {
+    const obj = doc.toObject ? doc.toObject() : { ...doc };
+    return {
+      ...obj,
+      _id:            this.toStringId(obj),
+      subscriptionId: obj.subscriptionId?.toString() ?? undefined,
+      userId:         obj.userId?.toString()         ?? undefined,
+      paidBy:         obj.paidBy?.toString()         ?? undefined,
     };
   }
 
@@ -24,12 +35,6 @@ export class SubscriptionRepository implements ISubscriptionRepository {
 
   async create(data: Omit<ISubscription, '_id' | 'createdAt' | 'updatedAt'>): Promise<ISubscription> {
     const doc = await SubscriptionModel.create(data);
-    return this.toEntity(doc);
-  }
-
-  async findByStripePaymentId(stripePaymentId: string): Promise<ISubscription | null> {
-    const doc = await SubscriptionModel.findOne({ stripePaymentId }).lean();
-    if (!doc) return null;
     return this.toEntity(doc);
   }
 
@@ -72,6 +77,53 @@ export class SubscriptionRepository implements ISubscriptionRepository {
   async getRevenueTotal(): Promise<number> {
     const result = await SubscriptionModel.aggregate([
       { $match: { status: { $in: ['active', 'paid'] } } },
+      { $group: { _id: null, total: { $sum: '$amount' } } },
+    ]);
+    return result[0]?.total ?? 0;
+  }
+
+  // ── Period management ────────────────────────────────────────────────────────
+
+  async createPeriod(data: Omit<ISubscriptionPeriod, '_id' | 'createdAt' | 'updatedAt'>): Promise<ISubscriptionPeriod> {
+    const doc = await SubscriptionPeriodModel.create(data);
+    return this.toPeriodEntity(doc);
+  }
+
+  async findPeriodsBySubscriptionId(subscriptionId: string): Promise<ISubscriptionPeriod[]> {
+    const docs = await SubscriptionPeriodModel.find({ subscriptionId }).sort({ periodStart: 1 }).lean();
+    return docs.map(d => this.toPeriodEntity(d));
+  }
+
+  async findPeriodById(periodId: string): Promise<ISubscriptionPeriod | null> {
+    const doc = await SubscriptionPeriodModel.findById(periodId).lean();
+    if (!doc) return null;
+    return this.toPeriodEntity(doc);
+  }
+
+  async updatePeriod(periodId: string, data: Partial<ISubscriptionPeriod>): Promise<ISubscriptionPeriod | null> {
+    const doc = await SubscriptionPeriodModel.findByIdAndUpdate(periodId, { $set: data }, { new: true }).lean();
+    if (!doc) return null;
+    return this.toPeriodEntity(doc);
+  }
+
+  async findAllPeriodsPaginated(
+    filter: { userId?: string; subscriptionId?: string; status?: string },
+    skip: number, limit: number
+  ): Promise<{ data: ISubscriptionPeriod[]; total: number }> {
+    const query: Record<string, any> = {};
+    if (filter.userId)         query.userId         = filter.userId;
+    if (filter.subscriptionId) query.subscriptionId = filter.subscriptionId;
+    if (filter.status)         query.status         = filter.status;
+    const [docs, total] = await Promise.all([
+      SubscriptionPeriodModel.find(query).sort({ periodStart: -1 }).skip(skip).limit(limit).lean(),
+      SubscriptionPeriodModel.countDocuments(query),
+    ]);
+    return { data: docs.map(d => this.toPeriodEntity(d)), total };
+  }
+
+  async getAdminRevenue(): Promise<number> {
+    const result = await SubscriptionPeriodModel.aggregate([
+      { $match: { status: 'paid' } },
       { $group: { _id: null, total: { $sum: '$amount' } } },
     ]);
     return result[0]?.total ?? 0;

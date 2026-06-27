@@ -6,6 +6,10 @@ export interface INotificationDocument extends Document {
   userId: mongoose.Types.ObjectId;
   title: string;
   message: string;
+  type?: string;
+  metadata?: Record<string, any>;
+  recipientId?: mongoose.Types.ObjectId;
+  recipientRole?: string;
   notificationType: string;
   channel: string;
   isRead: boolean;
@@ -25,6 +29,9 @@ const notificationSchema = new Schema<INotificationDocument>(
     channel: { type: String, enum: Object.values(NotificationChannel), default: NotificationChannel.IN_APP },
     isRead: { type: Boolean, default: false },
     readAt: { type: Date },
+    type: { type: String, required: false },
+    recipientId: { type: Schema.Types.ObjectId, ref: 'User', required: false },
+    recipientRole: { type: String, required: false },
     tenantId: { type: Schema.Types.ObjectId, ref: 'Tenant', required: false }
   },
   {

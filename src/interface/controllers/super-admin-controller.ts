@@ -1,9 +1,9 @@
-import type { Request, Response } from "express";
-import { ISuperAdminUseCases } from "../../application/interface/super-admin/super-admin-usecase.impl";
-import { AppError } from "../../shared/error/app-error";
+import type { Request, Response } from 'express';
+import { SuperAdminUseCases } from '../../application/usecase/super-admin/super-admin-usecase';
+import { AppError } from '../../shared/error/app-error';
 
 export class SuperAdminController {
-  constructor(private readonly uc: ISuperAdminUseCases) {}
+  constructor(private readonly uc: SuperAdminUseCases) {}
 
   private handleError(res: Response, error: unknown, fallback: string): Response {
     if (error instanceof AppError) {
@@ -13,7 +13,7 @@ export class SuperAdminController {
   }
 
   private pagination(req: Request) {
-    const page = Math.max(1, Number(req.query.page) || 1);
+    const page  = Math.max(1, Number(req.query.page)  || 1);
     const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 20));
     return { page, limit };
   }
@@ -23,6 +23,23 @@ export class SuperAdminController {
       const data = await this.uc.getPlatformStats();
       return res.status(200).json({ data });
     } catch (error) { return this.handleError(res, error, 'Failed to fetch platform stats.'); }
+  };
+
+  registerBuilder = async (req: Request, res: Response): Promise<Response> => {
+    try {
+      const { firstName, lastName, email, phone, billingCycle, numberOfBuildings, numberOfUnits, amount, notes } = req.body;
+      if (!firstName?.trim() || !lastName?.trim() || !email?.trim() || !billingCycle || !numberOfBuildings || !numberOfUnits || amount === undefined) {
+        return res.status(422).json({ message: 'firstName, lastName, email, billingCycle, numberOfBuildings, numberOfUnits, amount are all required.' });
+      }
+      if (!['monthly', 'yearly'].includes(billingCycle)) {
+        return res.status(422).json({ message: 'billingCycle must be "monthly" or "yearly".' });
+      }
+      const result = await this.uc.registerBuilder(
+        { firstName, lastName, email, phone, billingCycle, numberOfBuildings: Number(numberOfBuildings), numberOfUnits: Number(numberOfUnits), amount: Number(amount), notes },
+        req.user!.userId
+      );
+      return res.status(201).json(result);
+    } catch (error) { return this.handleError(res, error, 'Failed to register builder.'); }
   };
 
   listBuilders = async (req: Request, res: Response): Promise<Response> => {
@@ -100,7 +117,7 @@ export class SuperAdminController {
     try {
       const data = await this.uc.getSettings();
       return res.status(200).json({ data });
-    } catch (error) { return this.handleError(res, error, 'Failed to fetch settings.'); }
+    } catch (error) { return this.handleError(res, error, 'Failed to get settings.'); }
   };
 
   updateSettings = async (req: Request, res: Response): Promise<Response> => {
@@ -121,7 +138,7 @@ export class SuperAdminController {
 
   updateSubscription = async (req: Request<{ id: string }>, res: Response): Promise<Response> => {
     try {
-      const data = await this.uc.updateSubscription(req.params.id, req.body);
+      const data = await this.uc.updateSubscription(req.params.id, req.body, req.user!.userId);
       return res.status(200).json({ message: 'Subscription updated.', data });
     } catch (error) { return this.handleError(res, error, 'Failed to update subscription.'); }
   };

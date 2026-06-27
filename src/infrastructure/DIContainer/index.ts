@@ -27,10 +27,6 @@ import { JwtService } from '../services/jwt-service';
 import { PdfService } from '../services/pdf-service';
 import { RedisOtpService } from '../services/redis-otp-service';
 import { SubscriptionRepository } from '../repository/subscription-repository';
-import { StripeService } from '../services/stripe.service';
-import { CreateCheckoutSessionUseCase } from '../../application/usecase/payment/create-checkout-session-usecase';
-import { HandleWebhookUseCase } from '../../application/usecase/payment/handle-webhook-usecase';
-import { PaymentController } from '../../interface/controllers/payment-controller';
 import { UnitUseCases } from '../../application/usecase/unit/unit-usecase';
 import { UnitController } from '../../interface/controllers/unit-controller';
 import { UnitRepository } from '../repository/unit-repository';
@@ -61,50 +57,47 @@ import { PaymentRecordRepository } from '../repository/payment-record-repository
 import { PaymentRecordController } from '../../interface/controllers/payment-record-controller';
 
 // Repositories
-const userRepository           = new UserRepository();
-const tenantRepository         = new TenantRepository();
-const documentRepository       = new DocumentRepository();
-const agreementRepository      = new AgreementRepository();
-const subscriptionRepository   = new SubscriptionRepository();
-const unitRepository           = new UnitRepository();
-const analyticsRepository      = new AnalyticsRepository();
-const notificationRepository   = new NotificationRepositoryImpl();
-const buildingRepository       = new BuildingRepository();
-const floorRepository          = new FloorRepository();
-const activityLogRepository    = new ActivityLogRepositoryImpl();
-const expenseRepo              = new ExpenseRepository();
-const inquiryRepository        = new InquiryRepository();
+const userRepository            = new UserRepository();
+const tenantRepository          = new TenantRepository();
+const documentRepository        = new DocumentRepository();
+const agreementRepository       = new AgreementRepository();
+const subscriptionRepository    = new SubscriptionRepository();
+const unitRepository            = new UnitRepository();
+const analyticsRepository       = new AnalyticsRepository();
+const notificationRepository    = new NotificationRepositoryImpl();
+const buildingRepository        = new BuildingRepository();
+const floorRepository           = new FloorRepository();
+const activityLogRepository     = new ActivityLogRepositoryImpl();
+const expenseRepo               = new ExpenseRepository();
+const inquiryRepository         = new InquiryRepository();
 const platformSettingRepository = new PlatformSettingRepository();
-const paymentRecordRepository  = new PaymentRecordRepository();
+const paymentRecordRepository   = new PaymentRecordRepository();
 
 // Services
 const jwtService       = new JwtService();
 const emailService     = new EmailService();
 const otpService       = new RedisOtpService();
 const pdfService       = new PdfService();
-const stripeService    = new StripeService();
 const twilioSmsService = new TwilioSmsService();
 
 // Use Cases
-const userUseCase      = new UserUseCase(userRepository);
-const authUseCases     = new AuthUseCases(userRepository, jwtService, emailService, otpService);
-const registerUseCase  = new RegisterUseCase(userRepository, emailService, otpService);
-const bootstrapUseCase = new BootstrapSuperAdminUseCase(userRepository);
-const documentUseCases = new DocumentUseCases(documentRepository);
-const activityLogUseCase = new ActivityLogUsecaseImpl(activityLogRepository);
+const activityLogUseCase  = new ActivityLogUsecaseImpl(activityLogRepository);
+const userUseCase         = new UserUseCase(userRepository);
+const authUseCases        = new AuthUseCases(userRepository, jwtService, emailService, otpService);
+const registerUseCase     = new RegisterUseCase(userRepository, emailService, otpService);
+const bootstrapUseCase    = new BootstrapSuperAdminUseCase(userRepository);
+const documentUseCases    = new DocumentUseCases(documentRepository);
 const notificationUseCase = new NotificationUseCase(notificationRepository, emailService, twilioSmsService, userRepository);
-const agreementUseCases = new AgreementUseCases(agreementRepository, tenantRepository, documentRepository, emailService, pdfService);
-const unitUseCases      = new UnitUseCases(unitRepository, subscriptionRepository, buildingRepository, floorRepository);
-const floorUseCases     = new FloorUseCases(floorRepository, buildingRepository, unitUseCases, subscriptionRepository, unitRepository);
-const buildingUseCases  = new BuildingUseCases(buildingRepository, floorUseCases, subscriptionRepository, activityLogUseCase, unitRepository);
-const createCheckoutSessionUseCase = new CreateCheckoutSessionUseCase(stripeService, userRepository, subscriptionRepository, platformSettingRepository);
-const handleWebhookUseCase = new HandleWebhookUseCase(stripeService, userRepository, subscriptionRepository, emailService);
-const analyticsUseCase = new AnalyticsUseCase(analyticsRepository);
-const tenantUseCases   = new TenantUseCases(tenantRepository, unitRepository, activityLogUseCase);
-const subscriptionUseCases = new SubscriptionUseCases(subscriptionRepository, platformSettingRepository);
-const inquiryUseCases = new InquiryUseCases(inquiryRepository, buildingRepository, unitRepository, notificationUseCase);
-const publicUseCases  = new PublicUseCases(buildingRepository, unitRepository, floorRepository);
-const superAdminUseCases = new SuperAdminUseCases(userRepository, buildingRepository, subscriptionRepository, unitRepository, inquiryRepository, platformSettingRepository, activityLogUseCase);
+const agreementUseCases   = new AgreementUseCases(agreementRepository, tenantRepository, documentRepository, emailService, pdfService);
+const unitUseCases        = new UnitUseCases(unitRepository, subscriptionRepository, buildingRepository, floorRepository);
+const floorUseCases       = new FloorUseCases(floorRepository, buildingRepository, unitUseCases, subscriptionRepository, unitRepository);
+const buildingUseCases    = new BuildingUseCases(buildingRepository, floorUseCases, subscriptionRepository, activityLogUseCase, unitRepository);
+const analyticsUseCase    = new AnalyticsUseCase(analyticsRepository);
+const tenantUseCases      = new TenantUseCases(tenantRepository, unitRepository, activityLogUseCase);
+const subscriptionUseCases = new SubscriptionUseCases(subscriptionRepository, platformSettingRepository, userRepository, activityLogUseCase, emailService);
+const inquiryUseCases     = new InquiryUseCases(inquiryRepository, buildingRepository, unitRepository, notificationUseCase);
+const publicUseCases      = new PublicUseCases(buildingRepository, unitRepository, floorRepository);
+const superAdminUseCases  = new SuperAdminUseCases(userRepository, buildingRepository, subscriptionRepository, unitRepository, inquiryRepository, platformSettingRepository, activityLogUseCase, emailService);
 
 class TenantPaymentAdapter {
   constructor(private readonly tenantRepo: typeof tenantRepository) {}
@@ -112,34 +105,30 @@ class TenantPaymentAdapter {
     const tenants = await this.tenantRepo.findAll(filter as any);
     const today = new Date();
     return tenants.map(t => {
-      const paymentDueDate = typeof t.dueDate === 'number'
-        ? new Date(today.getFullYear(), today.getMonth(), t.dueDate)
-        : t.dueDate ? new Date(t.dueDate as any) : new Date();
       const hasPaidThisMonth = t.paidAt && (t.paidAt as Date).getMonth() === today.getMonth() && (t.paidAt as Date).getFullYear() === today.getFullYear();
-      return { amount: t.rentAmount, status: hasPaidThisMonth ? 'completed' : 'pending', type: 'rent', paidAt: t.paidAt, dueDate: paymentDueDate };
+      return { amount: t.rentAmount, status: hasPaidThisMonth ? 'completed' : 'pending', type: 'rent', paidAt: t.paidAt };
     });
   }
 }
 const expenseUseCases = new ExpenseUseCases(expenseRepo, new TenantPaymentAdapter(tenantRepository) as any);
 
 // Controllers
-export const authController        = new AuthController(authUseCases, registerUseCase);
-export const bootstrapController   = new BootstrapController(bootstrapUseCase);
-export const tenantController      = new TenantController(tenantUseCases);
-export const documentController    = new DocumentController(documentUseCases);
-export const agreementController   = new AgreementController(agreementUseCases);
-export const paymentController     = new PaymentController(createCheckoutSessionUseCase, handleWebhookUseCase);
-export const unitController        = new UnitController(unitUseCases);
-export const notificationController = new NotificationController(notificationUseCase);
-export const analyticsController   = new AnalyticsController(analyticsUseCase);
-export const userController        = new UserController(userUseCase);
-export const activityLogController = new ActivityLogController(activityLogUseCase, buildingRepository);
-export const buildingController    = new BuildingController(buildingUseCases, userRepository);
-export const floorController       = new FloorController(floorUseCases);
-export const expenseController     = new ExpenseController(expenseUseCases);
-export const superAdminController  = new SuperAdminController(superAdminUseCases);
-export const inquiryController     = new InquiryController(inquiryUseCases);
-export const publicController      = new PublicController(publicUseCases);
-export const uploadController      = new UploadController();
-export const subscriptionController = new SubscriptionController(subscriptionUseCases);
+export const authController          = new AuthController(authUseCases, registerUseCase);
+export const bootstrapController     = new BootstrapController(bootstrapUseCase);
+export const tenantController        = new TenantController(tenantUseCases);
+export const documentController      = new DocumentController(documentUseCases);
+export const agreementController     = new AgreementController(agreementUseCases);
+export const unitController          = new UnitController(unitUseCases);
+export const notificationController  = new NotificationController(notificationUseCase);
+export const analyticsController     = new AnalyticsController(analyticsUseCase);
+export const userController          = new UserController(userUseCase);
+export const activityLogController   = new ActivityLogController(activityLogUseCase, buildingRepository);
+export const buildingController      = new BuildingController(buildingUseCases, userRepository);
+export const floorController         = new FloorController(floorUseCases);
+export const expenseController       = new ExpenseController(expenseUseCases);
+export const superAdminController    = new SuperAdminController(superAdminUseCases);
+export const inquiryController       = new InquiryController(inquiryUseCases);
+export const publicController        = new PublicController(publicUseCases);
+export const uploadController        = new UploadController();
+export const subscriptionController  = new SubscriptionController(subscriptionUseCases);
 export const paymentRecordController = new PaymentRecordController(paymentRecordRepository, tenantRepository);
