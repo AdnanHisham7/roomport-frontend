@@ -2,20 +2,22 @@ import { baseApi } from './baseApi';
 import type { Tenant } from '@/types/tenancy';
 
 export interface CreateTenantInput {
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
-  rentType: string;
-  rentAmount: number;
-  dueDate: number;
-  unitId?: string;
-  buildingId?: string;
-  job?: string;
-  notes?: string;
-  emergencyContact?: { name: string; phone: string; relationship: string };
-  moveInDate?: string;
-  terms?: string;
+  firstName:            string;
+  lastName:             string;
+  email:                string;
+  phone:                string;
+  rentType:             string;
+  rentAmount:           number;
+  dueDate:              number;
+  unitId?:              string;
+  buildingId?:          string;
+  job?:                 string;
+  notes?:               string;
+  emergencyContact?:    { name: string; phone: string; relationship: string };
+  moveInDate?:          string;
+  terms?:               string;
+  agreementStartDate?:  string;
+  agreementEndDate?:    string;
 }
 
 export const tenantApi = baseApi.injectEndpoints({
@@ -23,7 +25,9 @@ export const tenantApi = baseApi.injectEndpoints({
     getTenants: builder.query<{ data: Tenant[] }, { buildingId?: string; unitId?: string; status?: string } | void>({
       query: (params) => ({ url: '/tenants/gettenants', params: params ?? undefined }),
       providesTags: (result) =>
-        result ? [...result.data.map((t) => ({ type: 'Tenant' as const, id: t._id })), { type: 'Tenant' as const, id: 'LIST' }] : [{ type: 'Tenant' as const, id: 'LIST' }],
+        result
+          ? [...result.data.map((t) => ({ type: 'Tenant' as const, id: t._id })), { type: 'Tenant' as const, id: 'LIST' }]
+          : [{ type: 'Tenant' as const, id: 'LIST' }],
     }),
     getTenantById: builder.query<{ data: Tenant }, string>({
       query: (id) => `/tenants/gettenant/${id}`,
@@ -44,6 +48,14 @@ export const tenantApi = baseApi.injectEndpoints({
       query: (id) => ({ url: `/tenants/deletetenant/${id}`, method: 'DELETE' }),
       invalidatesTags: [{ type: 'Tenant', id: 'LIST' }, { type: 'Unit', id: 'LIST' }],
     }),
+    transferTenant: builder.mutation<{ data: Tenant; message: string }, { tenantId: string; targetUnitId: string }>({
+      query: ({ tenantId, targetUnitId }) => ({
+        url:    `/tenants/transfer/${tenantId}`,
+        method: 'POST',
+        body:   { targetUnitId },
+      }),
+      invalidatesTags: [{ type: 'Tenant', id: 'LIST' }, { type: 'Unit', id: 'LIST' }, { type: 'Building', id: 'LIST' }],
+    }),
   }),
 });
 
@@ -54,4 +66,5 @@ export const {
   useCreateTenantMutation,
   useUpdateTenantMutation,
   useDeleteTenantMutation,
+  useTransferTenantMutation,
 } = tenantApi;

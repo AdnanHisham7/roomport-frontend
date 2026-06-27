@@ -1,6 +1,6 @@
-export function formatCurrency(amount: number | null | undefined, currency = 'USD'): string {
+export function formatCurrency(amount: number | null | undefined, currency = 'INR'): string {
   if (amount === null || amount === undefined) return '—';
-  return new Intl.NumberFormat('en-US', {
+  return new Intl.NumberFormat('en-IN', {
     style: 'currency',
     currency,
     maximumFractionDigits: amount % 1 === 0 ? 0 : 2,
@@ -11,7 +11,7 @@ export function formatDate(date: string | Date | undefined | null, opts?: Intl.D
   if (!date) return '—';
   const d = typeof date === 'string' ? new Date(date) : date;
   if (isNaN(d.getTime())) return '—';
-  return new Intl.DateTimeFormat('en-US', opts ?? { month: 'short', day: 'numeric', year: 'numeric' }).format(d);
+  return new Intl.DateTimeFormat('en-IN', opts ?? { month: 'short', day: 'numeric', year: 'numeric' }).format(d);
 }
 
 export function formatDateTime(date: string | Date | undefined | null): string {

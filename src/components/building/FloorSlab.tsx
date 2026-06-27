@@ -6,27 +6,33 @@ import type { Floor, Unit } from '@/types/building';
 import { cn } from '@/utils/cn';
 
 interface FloorSlabProps {
-  floor:          Floor;
-  units:          Unit[];
-  loading?:       boolean;
-  editable?:      boolean;
-  index?:         number;
-  onRoomClick?:   (unit: Unit) => void;
-  onRoomEdit?:    (unit: Unit) => void;   // ← new: open edit drawer
-  onRoomAssign?:  (unit: Unit) => void;   // ← new: open assign-tenant flow
-  onAddRoom?:     () => void;
-  onEditFloor?:   () => void;
-  onDeleteFloor?: () => void;
+  floor:               Floor;
+  units:               Unit[];
+  loading?:            boolean;
+  editable?:           boolean;
+  index?:              number;
+  onRoomClick?:        (unit: Unit) => void;
+  onRoomEdit?:         (unit: Unit) => void;
+  onRoomAssign?:       (unit: Unit) => void;
+  onRoomViewTenant?:   (unit: Unit) => void;
+  onRoomAddPayment?:   (unit: Unit) => void;
+  onRoomTransfer?:     (unit: Unit) => void;
+  onRoomMakeAvailable?: (unit: Unit) => void;
+  onAddRoom?:          () => void;
+  onEditFloor?:        () => void;
+  onDeleteFloor?:      () => void;
 }
 
 export function FloorSlab({
   floor, units, loading, editable, index = 0,
-  onRoomClick, onRoomEdit, onRoomAssign, onAddRoom, onEditFloor, onDeleteFloor,
+  onRoomClick, onRoomEdit, onRoomAssign,
+  onRoomViewTenant, onRoomAddPayment, onRoomTransfer, onRoomMakeAvailable,
+  onAddRoom, onEditFloor, onDeleteFloor,
 }: FloorSlabProps) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const occupied = units.filter(u => u.isOccupied || u.status === 'occupied').length;
-  const total    = units.length;
-  const fillPct  = total > 0 ? Math.round((occupied / total) * 100) : 0;
+  const occupied   = units.filter(u => u.isOccupied || u.status === 'occupied').length;
+  const total      = units.length;
+  const fillPct    = total > 0 ? Math.round((occupied / total) * 100) : 0;
 
   return (
     <motion.div
@@ -88,7 +94,12 @@ export function FloorSlab({
                 index={i}
                 onClick={() => onRoomClick?.(unit)}
                 onEdit={editable ? () => onRoomEdit?.(unit) : undefined}
-                onAssign={editable ? () => onRoomAssign?.(unit) : undefined}
+                onAssign={editable && unit.status === 'available' ? () => onRoomAssign?.(unit) : undefined}
+                onViewTenant={editable && (unit.status === 'occupied' || unit.status === 'reserved') ? () => onRoomViewTenant?.(unit) : undefined}
+                onAddPayment={editable && (unit.isOccupied || unit.status === 'occupied') ? () => onRoomAddPayment?.(unit) : undefined}
+                onTransfer={editable && (unit.isOccupied || unit.status === 'occupied') ? () => onRoomTransfer?.(unit) : undefined}
+                onConfirm={editable && unit.status === 'reserved' ? () => onRoomAssign?.(unit) : undefined}
+                onMakeAvailable={editable && unit.status === 'under maintenance' ? () => onRoomMakeAvailable?.(unit) : undefined}
               />
             ))}
         </AnimatePresence>

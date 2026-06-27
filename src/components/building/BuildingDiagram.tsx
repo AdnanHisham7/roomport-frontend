@@ -1,17 +1,22 @@
 import { useMemo, useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { Plus, Layers3 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { FloorSlab } from './FloorSlab';
 import { RoomDetailDrawer } from './RoomDetailDrawer';
 import { AssignTenantModal } from './AssignTenantModal';
+import { TransferTenantModal } from './TransferTenantModal';
 import { AddFloorModal, AddRoomModal, EditFloorModal } from './FloorRoomModals';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { RecordPaymentModal } from '@/components/payment/RecordPaymentModal';
 import { Button } from '@/components/ui';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { useGetFloorsByBuildingQuery, useDeleteFloorMutation } from '@/store/api/buildingApi';
-import { useGetUnitsQuery } from '@/store/api/unitApi';
+import { useGetUnitsQuery, useUpdateUnitMutation } from '@/store/api/unitApi';
+import { useGetTenantsQuery } from '@/store/api/tenantApi';
 import { toast } from 'sonner';
 import type { Floor, Unit } from '@/types/building';
+import type { Tenant } from '@/types/tenancy';
 
 interface Props {
   buildingId:   string;
@@ -19,22 +24,28 @@ interface Props {
 }
 
 export function BuildingDiagram({ buildingId, buildingName }: Props) {
+  const navigate = useNavigate();
   const { data: floorsData, isLoading: floorsLoading } = useGetFloorsByBuildingQuery(buildingId);
   const { data: unitsData,  isLoading: unitsLoading }  = useGetUnitsQuery({ buildingId });
+  const { data: tenantsData }                           = useGetTenantsQuery({ buildingId });
   const [deleteFloor, { isLoading: deletingFloor }] = useDeleteFloorMutation();
+  const [updateUnit]                                = useUpdateUnitMutation();
 
-  // Drawers / modals state
-  const [editUnit,      setEditUnit]      = useState<Unit | null>(null);  // edit room drawer
-  const [assignUnit,    setAssignUnit]    = useState<Unit | null>(null);  // assign-tenant modal
-  const [addFloorOpen,  setAddFloorOpen]  = useState(false);
-  const [editFloor,     setEditFloor]     = useState<Floor | null>(null);
+  // Modals / drawers
+  const [editUnit,          setEditUnit]          = useState<Unit | null>(null);
+  const [assignUnit,        setAssignUnit]        = useState<Unit | null>(null);
+  const [paymentUnit,       setPaymentUnit]       = useState<Unit | null>(null);
+  const [transferUnit,      setTransferUnit]      = useState<Unit | null>(null);
+  const [addFloorOpen,      setAddFloorOpen]      = useState(false);
+  const [editFloor,         setEditFloor]         = useState<Floor | null>(null);
   const [deleteFloorTarget, setDeleteFloorTarget] = useState<Floor | null>(null);
-  const [addRoomFloor,  setAddRoomFloor]  = useState<Floor | null>(null);
+  const [addRoomFloor,      setAddRoomFloor]      = useState<Floor | null>(null);
 
   const floors = useMemo(
     () => [...(floorsData?.data ?? [])].sort((a, b) => b.floorNumber - a.floorNumber),
     [floorsData]
   );
+
   const unitsByFloor = useMemo(() => {
     const map = new Map<string, Unit[]>();
     for (const u of unitsData?.data ?? []) {
@@ -45,6 +56,15 @@ export function BuildingDiagram({ buildingId, buildingName }: Props) {
     for (const arr of map.values()) arr.sort((a, b) => a.unitNumber.localeCompare(b.unitNumber, undefined, { numeric: true }));
     return map;
   }, [unitsData]);
+
+  // Map unitId → tenant for quick lookup
+  const tenantByUnit = useMemo(() => {
+    const map = new Map<string, Tenant>();
+    for (const t of tenantsData?.data ?? []) {
+      if (t.unitId) map.set(t.unitId, t);
+    }
+    return map;
+  }, [tenantsData]);
 
   const nextFloorNumber = floors.length ? Math.max(...floors.map(f => f.floorNumber)) + 1 : 0;
 
@@ -67,6 +87,29 @@ export function BuildingDiagram({ buildingId, buildingName }: Props) {
     } catch (err: any) {
       toast.error(err?.data?.message ?? 'Could not delete floor.', { description: err?.data?.suggestion });
     }
+  };
+
+  const handleMakeAvailable = async (unit: Unit) => {
+    try {
+      await updateUnit({ id: unit._id, body: { status: 'available', isOccupied: false } }).unwrap();
+      toast.success(`Room ${unit.unitNumber} marked as available.`);
+    } catch (err: any) {
+      toast.error(err?.data?.message ?? 'Could not update room status.', { description: err?.data?.suggestion });
+    }
+  };
+
+  const handleViewTenant = (unit: Unit) => {
+    const tenant = tenantByUnit.get(unit._id);
+    if (tenant) {
+      navigate(`/dashboard/tenants/${tenant._id}`);
+    } else {
+      toast.error('No tenant linked to this room.');
+    }
+  };
+
+  // For payment modal, get the tenant in the unit
+  const getPaymentTenant = (unit: Unit) => {
+    return tenantByUnit.get(unit._id) ?? null;
   };
 
   const loading = floorsLoading || unitsLoading;
@@ -102,7 +145,11 @@ export function BuildingDiagram({ buildingId, buildingName }: Props) {
                 index={i}
                 onRoomClick={setEditUnit}
                 onRoomEdit={setEditUnit}
-                onRoomAssign={setAssignUnit}
+                onRoomAssign={(unit) => setAssignUnit(unit)}
+                onRoomViewTenant={handleViewTenant}
+                onRoomAddPayment={(unit) => setPaymentUnit(unit)}
+                onRoomTransfer={(unit) => setTransferUnit(unit)}
+                onRoomMakeAvailable={handleMakeAvailable}
                 onAddRoom={() => setAddRoomFloor(floor)}
                 onEditFloor={() => setEditFloor(floor)}
                 onDeleteFloor={() => setDeleteFloorTarget(floor)}
@@ -112,10 +159,9 @@ export function BuildingDiagram({ buildingId, buildingName }: Props) {
         </div>
       )}
 
-      {/* Edit room drawer */}
+      {/* Modals */}
       <RoomDetailDrawer unit={editUnit} open={!!editUnit} onClose={() => setEditUnit(null)} />
 
-      {/* Assign tenant modal */}
       {assignUnit && (
         <AssignTenantModal
           open={!!assignUnit}
@@ -125,6 +171,39 @@ export function BuildingDiagram({ buildingId, buildingName }: Props) {
           buildingName={buildingName}
         />
       )}
+
+      {paymentUnit && (() => {
+        const t = getPaymentTenant(paymentUnit);
+        if (!t) return null;
+        return (
+          <RecordPaymentModal
+            open
+            onClose={() => setPaymentUnit(null)}
+            tenant={{ _id: t._id, firstName: t.firstName, lastName: t.lastName, rentAmount: t.rentAmount, rentType: t.rentType }}
+          />
+        );
+      })()}
+
+      {transferUnit && (() => {
+        const currentTenant = tenantByUnit.get(transferUnit._id);
+        
+        // Guard clause: If no tenant is mapped to this room yet, don't render the modal
+        if (!currentTenant) return null; 
+
+        return (
+          <TransferTenantModal
+            open
+            onClose={() => setTransferUnit(null)}
+            tenant={{ 
+              _id: currentTenant._id, 
+              firstName: currentTenant.firstName, 
+              lastName: currentTenant.lastName, 
+              unitId: transferUnit._id 
+            }}
+            buildingId={buildingId}
+          />
+        );
+      })()}
 
       <AddFloorModal open={addFloorOpen} onClose={() => setAddFloorOpen(false)} buildingId={buildingId} nextFloorNumber={nextFloorNumber} />
 

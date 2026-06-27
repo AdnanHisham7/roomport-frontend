@@ -1,126 +1,194 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { CreditCard, Zap, Building2, DoorOpen, ArrowRight, CheckCircle } from 'lucide-react';
+import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
-import { motion } from 'framer-motion';
+import { Building2, DoorOpen, Send, IndianRupee, Clock, CheckCircle, AlertCircle } from 'lucide-react';
 import { Button, Input } from '@/components/ui';
 import { Card } from '@/components/ui/Card';
 import { StatusPill } from '@/components/ui/Badge';
 import { PageLoader } from '@/components/ui/Avatar';
-import { useGetMySubscriptionQuery, useGetSubscriptionHistoryQuery, useGetPricingQuery, useCreateQuoteMutation } from '@/store/api/subscriptionApi';
-import { useCreateCheckoutSessionMutation } from '@/store/api/paymentApi';
+import { useGetMySubscriptionQuery, useGetMyPeriodsQuery, useGetSubscriptionHistoryQuery, useRequestUpgradeMutation } from '@/store/api/subscriptionApi';
 import { formatCurrency, formatDate } from '@/utils/format';
-import { useForm } from 'react-hook-form';
+import { cn } from '@/utils/cn';
+import type { SubscriptionPeriod } from '@/types/platform';
 
-interface QuoteForm { numberOfBuildings: number; numberOfUnits: number; }
+interface UpgradeForm {
+  additionalBuildings: number;
+  additionalUnits:     number;
+  message:             string;
+}
+
+const periodStatusStyle: Record<string, string> = {
+  paid:    'bg-sage-100 text-sage-700',
+  pending: 'bg-amber-100 text-amber-700',
+  overdue: 'bg-crimson-100 text-crimson-700',
+};
+
+function PeriodRow({ period }: { period: SubscriptionPeriod }) {
+  return (
+    <div className="flex items-center justify-between py-2.5 text-sm">
+      <div>
+        <p className="font-medium text-ink">{period.periodLabel}</p>
+        <p className="text-xs text-ink-faint">{formatDate(period.periodStart)} → {formatDate(period.periodEnd)}</p>
+      </div>
+      <div className="flex items-center gap-3">
+        <span className="font-mono font-semibold text-ink">{formatCurrency(period.amount)}</span>
+        <span className={cn('rounded-full px-2 py-0.5 text-[11px] font-medium capitalize', periodStatusStyle[period.status] ?? 'bg-paper-deep text-ink-faint')}>
+          {period.status}
+        </span>
+        {period.paidAt && <span className="hidden text-[11px] text-ink-faint sm:block">Paid {formatDate(period.paidAt)}</span>}
+      </div>
+    </div>
+  );
+}
 
 export default function BillingPage() {
-  const navigate = useNavigate();
-  const { data: subData, isLoading } = useGetMySubscriptionQuery();
-  const { data: historyData } = useGetSubscriptionHistoryQuery();
-  const { data: pricingData } = useGetPricingQuery();
-  const [createQuote, { isLoading: quoting }] = useCreateQuoteMutation();
-  const [checkout, { isLoading: checkingOut }] = useCreateCheckoutSessionMutation();
-  const [quote, setQuote] = useState<{ _id: string; amount: number } | null>(null);
+  const { data: subData,     isLoading }  = useGetMySubscriptionQuery();
+  const { data: periodsData }             = useGetMyPeriodsQuery();
+  const { data: historyData }             = useGetSubscriptionHistoryQuery();
+  const [requestUpgrade, { isLoading: requesting }] = useRequestUpgradeMutation();
+  const [upgradeSubmitted, setUpgradeSubmitted]       = useState(false);
 
-  const { register, handleSubmit, watch } = useForm<QuoteForm>({ defaultValues: { numberOfBuildings: 1, numberOfUnits: 10 } });
-  const buildings = watch('numberOfBuildings');
-  const units = watch('numberOfUnits');
-  const pricing = pricingData?.data;
-  const previewAmount = pricing ? buildings * pricing.pricePerBuilding + units * pricing.pricePerUnit : 0;
+  const { register, handleSubmit, formState: { errors } } = useForm<UpgradeForm>({
+    defaultValues: { additionalBuildings: 0, additionalUnits: 0 },
+  });
 
   const subscription = subData?.data;
+  const periods      = periodsData?.data ?? [];
 
-  const onGetQuote = async (values: QuoteForm) => {
+  const onSubmitUpgrade = async (values: UpgradeForm) => {
     try {
-      const res = await createQuote(values).unwrap();
-      setQuote({ _id: res.data._id, amount: res.data.amount });
-      toast.success('Quote ready — proceed to checkout when ready.');
+      await requestUpgrade({
+        additionalBuildings: Number(values.additionalBuildings),
+        additionalUnits:     Number(values.additionalUnits),
+        message:             values.message,
+      }).unwrap();
+      setUpgradeSubmitted(true);
+      toast.success('Upgrade request sent. Our team will contact you shortly.');
     } catch (err: any) {
-      toast.error(err?.data?.message ?? 'Could not generate quote.');
-    }
-  };
-
-  const onCheckout = async () => {
-    if (!quote) return;
-    try {
-      const origin = window.location.origin;
-      const res = await checkout({ subscriptionId: quote._id, successUrl: `${origin}/checkout/success`, cancelUrl: `${origin}/dashboard/billing` }).unwrap();
-      window.location.href = res.data.url;
-    } catch (err: any) {
-      toast.error(err?.data?.message ?? 'Could not start checkout.');
+      toast.error(err?.data?.message ?? 'Could not send upgrade request.');
     }
   };
 
   if (isLoading) return <PageLoader />;
 
   return (
-    <div className="mx-auto max-w-3xl">
-      <div className="mb-6">
+    <div className="mx-auto max-w-3xl space-y-6">
+      <div>
         <h1 className="font-display text-2xl font-semibold text-ink">Billing</h1>
-        <p className="mt-1 text-sm text-ink-soft">Your subscription limits the buildings and rooms you can manage.</p>
+        <p className="mt-1 text-sm text-ink-soft">Your subscription details and payment history.</p>
       </div>
 
-      {subscription && (
-        <Card padding="lg" className="mb-5">
-          <div className="flex items-start justify-between gap-4">
+      {/* Current subscription */}
+      {subscription ? (
+        <Card padding="lg">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="font-display text-base font-semibold text-ink">Current plan</h2>
+            <StatusPill status={subscription.status} />
+          </div>
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 text-sm">
             <div>
-              <div className="flex items-center gap-2">
-                <CreditCard className="size-4 text-crimson-500" />
-                <span className="font-display text-base font-semibold text-ink">Current plan</span>
-                <StatusPill status={subscription.status} />
-              </div>
-              <div className="mt-3 flex flex-wrap gap-5">
-                <div className="flex items-center gap-1.5 text-sm text-ink-soft"><Building2 className="size-4 text-crimson-400" /> {subscription.numberOfBuildings} buildings</div>
-                <div className="flex items-center gap-1.5 text-sm text-ink-soft"><DoorOpen className="size-4 text-crimson-400" /> {subscription.numberOfUnits} rooms</div>
-              </div>
-              <p className="mt-2 text-sm text-ink-soft">Renews {formatDate(subscription.dueDate)} · {formatCurrency(subscription.amount)}/year</p>
+              <p className="text-xs text-ink-faint">Cycle</p>
+              <p className="mt-0.5 font-medium text-ink capitalize">{subscription.billingCycle}</p>
             </div>
-            {subscription.status === 'active' && <CheckCircle className="size-7 text-sage-500" />}
+            <div>
+              <p className="text-xs text-ink-faint">Buildings</p>
+              <p className="mt-0.5 font-medium text-ink">{subscription.numberOfBuildings}</p>
+            </div>
+            <div>
+              <p className="text-xs text-ink-faint">Rooms</p>
+              <p className="mt-0.5 font-medium text-ink">{subscription.numberOfUnits}</p>
+            </div>
+            <div>
+              <p className="text-xs text-ink-faint">Amount / {subscription.billingCycle === 'monthly' ? 'mo' : 'yr'}</p>
+              <p className="mt-0.5 font-mono font-semibold text-ink">{formatCurrency(subscription.amount)}</p>
+            </div>
+          </div>
+          <div className="mt-4 flex items-center gap-2 text-xs text-ink-faint">
+            <Clock className="size-3.5" />
+            Current period: {formatDate(subscription.currentPeriodStart)} → {formatDate(subscription.currentPeriodEnd)}
+          </div>
+          {subscription.notes && (
+            <p className="mt-3 rounded-lg bg-paper-dim px-3 py-2 text-xs text-ink-soft">{subscription.notes}</p>
+          )}
+        </Card>
+      ) : (
+        <Card padding="lg" className="text-center">
+          <AlertCircle className="mx-auto mb-2 size-8 text-amber-500" />
+          <p className="font-medium text-ink">No active subscription</p>
+          <p className="mt-1 text-sm text-ink-soft">Contact your administrator or reach out to us to get started.</p>
+        </Card>
+      )}
+
+      {/* Payment periods */}
+      {periods.length > 0 && (
+        <Card padding="lg">
+          <h2 className="mb-4 font-display text-base font-semibold text-ink">Payment periods</h2>
+          <div className="divide-y divide-line">
+            {periods.map((p) => <PeriodRow key={p._id} period={p} />)}
           </div>
         </Card>
       )}
 
+      {/* Upgrade / renewal request */}
       <Card padding="lg">
-        <h3 className="mb-1 font-display text-base font-semibold text-ink">Get a quote</h3>
+        <h2 className="mb-1 font-display text-base font-semibold text-ink">Request upgrade or renewal</h2>
         <p className="mb-5 text-sm text-ink-soft">
-          {pricing ? `${formatCurrency(pricing.pricePerBuilding)}/building · ${formatCurrency(pricing.pricePerUnit)}/room per year` : 'Calculating pricing...'}
+          Need more buildings or rooms? Submit a quotation request and our team will contact you. All payments are handled in-person.
         </p>
-        <form onSubmit={handleSubmit(onGetQuote)} className="flex flex-col gap-4">
-          <div className="grid grid-cols-2 gap-4">
-            <Input label="Buildings" type="number" min={1} leftIcon={<Building2 className="size-4" />} {...register('numberOfBuildings', { required: true, valueAsNumber: true, min: 1 })} />
-            <Input label="Rooms" type="number" min={1} leftIcon={<DoorOpen className="size-4" />} {...register('numberOfUnits', { required: true, valueAsNumber: true, min: 1 })} />
+
+        {upgradeSubmitted ? (
+          <div className="flex items-center gap-3 rounded-xl bg-sage-50 border border-sage-200 px-4 py-3">
+            <CheckCircle className="size-5 text-sage-600 shrink-0" />
+            <p className="text-sm text-sage-800">Request submitted. We'll reach out within 24 hours to confirm and apply your changes.</p>
           </div>
-          {pricing && (
-            <div className="rounded-xl bg-crimson-50 px-4 py-3 text-sm font-medium text-crimson-700">
-              Estimated annual cost: {formatCurrency(previewAmount)}
+        ) : (
+          <form onSubmit={handleSubmit(onSubmitUpgrade)} className="flex flex-col gap-4">
+            <div className="grid grid-cols-2 gap-3">
+              <Input
+                label="Additional buildings needed"
+                type="number"
+                min={0}
+                leftIcon={<Building2 className="size-4" />}
+                {...register('additionalBuildings', { valueAsNumber: true })}
+              />
+              <Input
+                label="Additional rooms needed"
+                type="number"
+                min={0}
+                leftIcon={<DoorOpen className="size-4" />}
+                {...register('additionalUnits', { valueAsNumber: true })}
+              />
             </div>
-          )}
-          <div className="flex items-center gap-3">
-            <Button type="submit" loading={quoting} variant="outline">Generate quote</Button>
-            {quote && (
-              <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }}>
-                <Button icon={<Zap className="size-4" />} iconRight={<ArrowRight className="size-4" />} loading={checkingOut} onClick={onCheckout}>
-                  Pay {formatCurrency(quote.amount)}
-                </Button>
-              </motion.div>
-            )}
-          </div>
-        </form>
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-ink">Message (optional)</label>
+              <textarea
+                rows={3}
+                placeholder="Describe what you need — new buildings, more rooms per building, renewal for next cycle, etc."
+                className="w-full resize-none rounded-xl border border-line bg-paper-dim px-3 py-2.5 text-sm text-ink placeholder-ink-faint focus:border-crimson-400 focus:outline-none"
+                {...register('message')}
+              />
+            </div>
+            <Button type="submit" loading={requesting} icon={<Send className="size-4" />} className="w-fit">
+              Send upgrade request
+            </Button>
+          </form>
+        )}
       </Card>
 
-      {!!historyData?.data.length && (
-        <Card padding="none" className="mt-5">
-          <div className="border-b border-line px-5 py-4">
-            <h3 className="font-display text-sm font-semibold text-ink">Billing history</h3>
-          </div>
+      {/* Subscription history */}
+      {(historyData?.data?.length ?? 0) > 1 && (
+        <Card padding="lg">
+          <h2 className="mb-4 font-display text-base font-semibold text-ink">Subscription history</h2>
           <div className="divide-y divide-line">
-            {historyData.data.map(h => (
-              <div key={h._id} className="flex items-center justify-between px-5 py-3.5 text-sm">
-                <span className="text-ink-soft">{formatDate(h.createdAt)}</span>
+            {historyData!.data.map((s) => (
+              <div key={s._id} className="flex items-center justify-between py-2.5 text-sm">
+                <div>
+                  <p className="font-medium text-ink capitalize">{s.billingCycle} — {s.numberOfBuildings}B / {s.numberOfUnits}R</p>
+                  <p className="text-xs text-ink-faint">{formatDate(s.createdAt)}</p>
+                </div>
                 <div className="flex items-center gap-3">
-                  <StatusPill status={h.status} />
-                  <span className="font-medium text-ink">{formatCurrency(h.amount)}</span>
+                  <span className="font-mono text-sm text-ink">{formatCurrency(s.amount)}</span>
+                  <StatusPill status={s.status} />
                 </div>
               </div>
             ))}

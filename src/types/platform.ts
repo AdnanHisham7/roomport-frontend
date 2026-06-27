@@ -1,7 +1,51 @@
+export type BillingCycle = 'monthly' | 'yearly';
+
 export interface Subscription {
-  _id: string; userId: string; amount: number; numberOfBuildings: number; numberOfUnits: number;
-  dueDate: string; paidAt?: string; status: string; paymentMethod?: string;
-  invoicenumber?: string; createdAt?: string; updatedAt?: string;
+  _id:                string;
+  userId:             string;
+  amount:             number;
+  numberOfBuildings:  number;
+  numberOfUnits:      number;
+  billingCycle:       BillingCycle;
+  currentPeriodStart: string;
+  currentPeriodEnd:   string;
+  dueDate:            string;
+  paidAt?:            string;
+  status:             string;
+  paymentMethod?:     string;
+  invoicenumber?:     string;
+  notes?:             string;
+  createdAt?:         string;
+  updatedAt?:         string;
+}
+
+export interface SubscriptionPeriod {
+  _id:            string;
+  subscriptionId: string;
+  userId:         string;
+  periodStart:    string;
+  periodEnd:      string;
+  periodLabel:    string;
+  amount:         number;
+  status:         'pending' | 'paid' | 'overdue';
+  paidAt?:        string;
+  notes?:         string;
+  createdAt?:     string;
+}
+
+export interface DemoRequest {
+  _id:               string;
+  firstName:         string;
+  lastName:          string;
+  email:             string;
+  phone?:            string;
+  companyName?:      string;
+  numberOfBuildings: number;
+  numberOfUnits:     number;
+  message?:          string;
+  status:            'new' | 'contacted' | 'converted' | 'closed';
+  adminNotes?:       string;
+  createdAt?:        string;
 }
 
 export type InquiryStatus = 'new' | 'contacted' | 'closed' | 'spam';
@@ -27,12 +71,28 @@ export interface BuilderListItem {
 export interface BuilderDetail extends BuilderListItem {
   managers: { _id: string; first_name: string; last_name: string; email: string; status: string }[];
   buildings: { _id: string; name: string; totalUnits: number; totalFloors: number; status: string; isPublished: boolean }[];
-  subscription: { _id: string; amount: number; numberOfBuildings: number; numberOfUnits: number; status: string; dueDate: string } | null;
+  subscription: {
+    _id: string; amount: number; numberOfBuildings: number; numberOfUnits: number;
+    status: string; billingCycle: BillingCycle; dueDate: string;
+    currentPeriodStart: string; currentPeriodEnd: string;
+    periods: SubscriptionPeriod[];
+  } | null;
 }
 
 export interface PlatformSetting {
-  _id?: string; platformName: string; supportEmail?: string; pricePerBuilding: number;
-  pricePerUnit: number; currency: string; maintenanceMode: boolean; maxFeaturedBuildings: number; updatedAt?: string;
+  _id?:                    string;
+  platformName:            string;
+  supportEmail?:           string;
+  pricePerBuilding:        number;
+  pricePerUnit:            number;
+  monthlyPricePerBuilding: number;
+  monthlyPricePerUnit:     number;
+  yearlyPricePerBuilding:  number;
+  yearlyPricePerUnit:      number;
+  currency:                string;
+  maintenanceMode:         boolean;
+  maxFeaturedBuildings:    number;
+  updatedAt?:              string;
 }
 
 export interface PublicBuildingCard {

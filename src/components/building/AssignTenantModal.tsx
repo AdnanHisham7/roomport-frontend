@@ -1,16 +1,18 @@
 /**
- * AssignTenantModal — triggered when clicking the "assign tenant" icon on a room tile.
+ * AssignTenantModal — triggered when clicking "assign tenant" on a room tile.
  *
  * Step 1: Collect tenant details
- * Step 2: Choose agreement type (rental / lease) and draft the agreement text
- * Step 3: On confirm → create tenant + agreement → mark room as occupied
- * On cancel at any step → nothing is saved.
+ * Step 2: Choose agreement type + dates — dates are VALIDATED before any backend call
+ * Step 3: On confirm → create tenant (with agreementStartDate/agreementEndDate pre-validation) + agreement → mark room occupied
+ *
+ * Key fix: agreement end date must be after start date. This is validated at Step 2 before
+ * the tenant is ever created, so no orphan tenant records can exist.
  */
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import {
-  User, Mail, Phone, DollarSign, Briefcase, FileText, Calendar,
+  User, Mail, Phone, IndianRupee, Briefcase, FileText, Calendar,
   ChevronRight, ChevronLeft, CheckCircle2,
 } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
@@ -20,21 +22,17 @@ import { useCreateAgreementMutation } from '@/store/api/agreementApi';
 import { useUpdateUnitMutation } from '@/store/api/unitApi';
 import type { Unit } from '@/types/building';
 
-// ─── Step 1 — Tenant details ──────────────────────────────────────────────────
-
 interface TenantFormValues {
-  firstName: string;
-  lastName:  string;
-  email:     string;
-  phone:     string;
-  job:       string;
-  notes:     string;
-  rentType:  string;
+  firstName:  string;
+  lastName:   string;
+  email:      string;
+  phone:      string;
+  job:        string;
+  notes:      string;
+  rentType:   string;
   rentAmount: number;
-  dueDate:   number;
+  dueDate:    number;
 }
-
-// ─── Step 2 — Agreement details ───────────────────────────────────────────────
 
 type AgreementKind = 'rental' | 'lease';
 
@@ -60,28 +58,20 @@ const kindOptions = [
   { value: 'lease',  label: 'Lease   (single lump-sum for the period)' },
 ];
 
+function ordinal(n: number): string {
+  const s = ['th', 'st', 'nd', 'rd'];
+  const v = n % 100;
+  return s[(v - 20) % 10] || s[v] || s[0];
+}
+
 function buildDefaultBody(kind: AgreementKind, tenant: TenantFormValues, unit: Unit, buildingName: string): string {
   const cycleLabel: Record<string, string> = {
     monthly: 'month', quarterly: 'quarter', half_yearly: 'half-year', yearly: 'year', custom: 'period',
   };
   if (kind === 'rental') {
-    return `This Rental Agreement is entered into between the property owner ("Landlord") and ${tenant.firstName} ${tenant.lastName} ("Tenant") for Unit ${unit.unitNumber}, ${buildingName}.
-
-The Tenant agrees to pay a rent of ₹${tenant.rentAmount} per ${cycleLabel[tenant.rentType] ?? 'period'}, due on the ${tenant.dueDate}${ordinal(tenant.dueDate)} of each ${cycleLabel[tenant.rentType] ?? 'period'}. Rent must be paid in full and on time. Late payment may incur a penalty as agreed upon by both parties.
-
-The Tenant shall maintain the premises in good condition and shall not sublet without prior written consent of the Landlord.`;
+    return `This Rental Agreement is entered into between the property owner ("Landlord") and ${tenant.firstName} ${tenant.lastName} ("Tenant") for Unit ${unit.unitNumber}, ${buildingName}.\n\nThe Tenant agrees to pay a rent of ₹${tenant.rentAmount} per ${cycleLabel[tenant.rentType] ?? 'period'}, due on the ${tenant.dueDate}${ordinal(tenant.dueDate)} of each ${cycleLabel[tenant.rentType] ?? 'period'}. Rent must be paid in full and on time. Late payment may incur a penalty as agreed upon by both parties.\n\nThe Tenant shall maintain the premises in good condition and shall not sublet without prior written consent of the Landlord.`;
   }
-  return `This Lease Agreement is entered into between the property owner ("Landlord") and ${tenant.firstName} ${tenant.lastName} ("Tenant") for Unit ${unit.unitNumber}, ${buildingName}.
-
-The Tenant agrees to make a one-time lease payment of ₹${tenant.rentAmount} for the entire lease period as specified herein. This payment covers exclusive occupancy for the agreed duration.
-
-The Tenant shall maintain the premises in good condition and shall not sublet without prior written consent of the Landlord.`;
-}
-
-function ordinal(n: number): string {
-  const s = ['th','st','nd','rd'];
-  const v = n % 100;
-  return s[(v-20)%10] || s[v] || s[0];
+  return `This Lease Agreement is entered into between the property owner ("Landlord") and ${tenant.firstName} ${tenant.lastName} ("Tenant") for Unit ${unit.unitNumber}, ${buildingName}.\n\nThe Tenant agrees to make a one-time lease payment of ₹${tenant.rentAmount} for the entire lease period as specified herein. This payment covers exclusive occupancy for the agreed duration.\n\nThe Tenant shall maintain the premises in good condition and shall not sublet without prior written consent of the Landlord.`;
 }
 
 interface Props {
@@ -93,7 +83,7 @@ interface Props {
 }
 
 export function AssignTenantModal({ open, onClose, unit, buildingId, buildingName }: Props) {
-  const [step, setStep] = useState<1 | 2>(1);
+  const [step,       setStep]       = useState<1 | 2>(1);
   const [tenantData, setTenantData] = useState<TenantFormValues | null>(null);
 
   const [createTenant,    { isLoading: creatingTenant }]    = useCreateTenantMutation();
@@ -124,34 +114,58 @@ export function AssignTenantModal({ open, onClose, unit, buildingId, buildingNam
   // Step 1 → Step 2
   const onTenantNext = tenantForm.handleSubmit((values) => {
     setTenantData(values);
-    // Pre-populate agreement body
     agmtForm.setValue('body', buildDefaultBody(agmtForm.getValues('kind'), values, unit, buildingName));
     setStep(2);
   });
 
-  // When kind changes, refresh the body template
   const onKindChange = (kind: AgreementKind) => {
     if (!tenantData) return;
     agmtForm.setValue('body', buildDefaultBody(kind, tenantData, unit, buildingName));
   };
 
-  // Final submit
+  // Final submit — validate agreement dates FIRST, THEN create tenant
   const onSubmit = agmtForm.handleSubmit(async (agmt) => {
     if (!tenantData) return;
+
+    // ── Client-side date validation before any API call ──────────────────────
+    if (!agmt.startDate || !agmt.endDate) {
+      agmtForm.setError('startDate', { message: 'Start date is required.' });
+      agmtForm.setError('endDate',   { message: 'End date is required.' });
+      return;
+    }
+    const start = new Date(agmt.startDate);
+    const end   = new Date(agmt.endDate);
+    if (isNaN(start.getTime())) {
+      agmtForm.setError('startDate', { message: 'Invalid start date.' });
+      return;
+    }
+    if (isNaN(end.getTime())) {
+      agmtForm.setError('endDate', { message: 'Invalid end date.' });
+      return;
+    }
+    if (end <= start) {
+      agmtForm.setError('endDate', { message: 'End date must be after start date.' });
+      toast.error('End date must be after start date.', { description: 'Please correct the agreement dates.' });
+      return;
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
     try {
-      // 1. Create tenant
+      // 1. Create tenant — pass agreement dates for backend pre-validation too
       const tenantRes = await createTenant({
-        firstName:  tenantData.firstName,
-        lastName:   tenantData.lastName,
-        email:      tenantData.email,
-        phone:      tenantData.phone,
+        firstName:           tenantData.firstName,
+        lastName:            tenantData.lastName,
+        email:               tenantData.email,
+        phone:               tenantData.phone,
         buildingId,
-        unitId:     unit._id,
-        rentType:   tenantData.rentType,
-        rentAmount: Number(tenantData.rentAmount),
-        dueDate:    Number(tenantData.dueDate),
-        job:        tenantData.job,
-        notes:      tenantData.notes,
+        unitId:              unit._id,
+        rentType:            tenantData.rentType,
+        rentAmount:          Number(tenantData.rentAmount),
+        dueDate:             Number(tenantData.dueDate),
+        job:                 tenantData.job,
+        notes:               tenantData.notes,
+        agreementStartDate:  agmt.startDate,
+        agreementEndDate:    agmt.endDate,
       }).unwrap();
       const newTenantId = tenantRes.data._id;
 
@@ -188,7 +202,7 @@ export function AssignTenantModal({ open, onClose, unit, buildingId, buildingNam
     >
       {/* Step indicator */}
       <div className="mb-5 flex items-center gap-2">
-        {(['1','2'] as const).map((s, i) => (
+        {(['1', '2'] as const).map((s, i) => (
           <div key={s} className="flex items-center gap-2">
             {i > 0 && <div className="h-px w-6 bg-line" />}
             <div className={`flex size-6 items-center justify-center rounded-full text-[11px] font-semibold ${Number(s) === step ? 'bg-crimson-500 text-white' : Number(s) < step ? 'bg-sage-500 text-white' : 'bg-paper-deep text-ink-faint'}`}>
@@ -214,7 +228,7 @@ export function AssignTenantModal({ open, onClose, unit, buildingId, buildingNam
           </div>
           <div className="grid grid-cols-3 gap-3">
             <Select label="Rent cycle" options={rentTypeOptions} {...tenantForm.register('rentType')} />
-            <Input label="Rent amount" type="number" step="0.01" leftIcon={<DollarSign className="size-4" />} error={tenantForm.formState.errors.rentAmount?.message} {...tenantForm.register('rentAmount', { required: true, valueAsNumber: true })} />
+            <Input label="Rent amount (₹)" type="number" step="1" min={0} leftIcon={<IndianRupee className="size-4" />} error={tenantForm.formState.errors.rentAmount?.message} {...tenantForm.register('rentAmount', { required: true, valueAsNumber: true })} />
             <Input label="Due day" type="number" min={1} max={28} hint="Day of month" {...tenantForm.register('dueDate', { required: true, valueAsNumber: true })} />
           </div>
           <Input label="Occupation (optional)" leftIcon={<Briefcase className="size-4" />} {...tenantForm.register('job')} />
@@ -252,16 +266,38 @@ export function AssignTenantModal({ open, onClose, unit, buildingId, buildingNam
           <Input label="Agreement title" leftIcon={<FileText className="size-4" />} error={agmtForm.formState.errors.title?.message} {...agmtForm.register('title', { required: 'Required' })} />
 
           <div className="grid grid-cols-2 gap-3">
-            <Input label="Start date" type="date" leftIcon={<Calendar className="size-4" />} error={agmtForm.formState.errors.startDate?.message} {...agmtForm.register('startDate', { required: 'Required' })} />
-            <Input label="End date" type="date" leftIcon={<Calendar className="size-4" />} error={agmtForm.formState.errors.endDate?.message} {...agmtForm.register('endDate', { required: 'Required' })} />
+            <Input
+              label="Start date"
+              type="date"
+              leftIcon={<Calendar className="size-4" />}
+              error={agmtForm.formState.errors.startDate?.message}
+              {...agmtForm.register('startDate', { required: 'Start date is required' })}
+            />
+            <Input
+              label="End date"
+              type="date"
+              leftIcon={<Calendar className="size-4" />}
+              error={agmtForm.formState.errors.endDate?.message}
+              hint="Must be after start date"
+              {...agmtForm.register('endDate', {
+                required: 'End date is required',
+                validate: (v) => {
+                  const start = agmtForm.getValues('startDate');
+                  if (!start || !v) return true;
+                  return new Date(v) > new Date(start) || 'End date must be after start date';
+                },
+              })}
+            />
           </div>
 
-          <Textarea label="Agreement body" hint="You can edit the auto-generated text below" rows={8} error={agmtForm.formState.errors.body?.message} {...agmtForm.register('body', { required: 'Required' })} />
+          <Textarea label="Agreement body" hint="Edit the auto-generated text below as needed" rows={8} error={agmtForm.formState.errors.body?.message} {...agmtForm.register('body', { required: 'Agreement body is required' })} />
           <Textarea label="Additional terms (optional)" rows={3} {...agmtForm.register('terms')} />
 
           <div className="flex items-center justify-between gap-3">
             <Button type="button" variant="subtle" icon={<ChevronLeft className="size-4" />} onClick={() => setStep(1)}>Back</Button>
-            <Button type="submit" loading={submitting} icon={<CheckCircle2 className="size-4" />}>Assign &amp; create agreement</Button>
+            <Button type="submit" loading={submitting} icon={<CheckCircle2 className="size-4" />}>
+              Assign &amp; create agreement
+            </Button>
           </div>
         </form>
       )}

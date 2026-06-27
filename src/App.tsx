@@ -9,98 +9,100 @@ import { BuilderLayout } from '@/components/layout/BuilderLayout';
 import { SuperAdminLayout } from '@/components/layout/SuperAdminLayout';
 
 // Public
-const LandingPage = lazy(() => import('@/pages/public/LandingPage'));
-const ListingsPage = lazy(() => import('@/pages/public/ListingsPage'));
-const BuildingDetailPage = lazy(() => import('@/pages/public/BuildingDetailPage'));
-const RoomDetailPage = lazy(() => import('@/pages/public/RoomDetailPage'));
-const GetStartedPage = lazy(() => import('@/pages/public/GetStartedPage'));
-const SignAgreementPage = lazy(() => import('@/pages/public/SignAgreementPage'));
-const CheckoutResultPage = lazy(() => import('@/pages/public/CheckoutResultPage'));
+const LandingPage          = lazy(() => import('@/pages/public/LandingPage'));
+const ListingsPage         = lazy(() => import('@/pages/public/ListingsPage'));
+const BuildingDetailPage   = lazy(() => import('@/pages/public/BuildingDetailPage'));
+const RoomDetailPage       = lazy(() => import('@/pages/public/RoomDetailPage'));
+const GetStartedPage       = lazy(() => import('@/pages/public/GetStartedPage'));
+const SignAgreementPage    = lazy(() => import('@/pages/public/SignAgreementPage'));
 
 // Auth
-const LoginPage = lazy(() => import('@/pages/auth/LoginPage'));
-const RegisterPage = lazy(() => import('@/pages/auth/RegisterPage'));
-const VerifyEmailPage = lazy(() => import('@/pages/auth/VerifyEmailPage'));
-const ForgotPasswordPage = lazy(() => import('@/pages/auth/ForgotPasswordPage'));
-const ResetPasswordPage = lazy(() => import('@/pages/auth/ResetPasswordPage'));
-const SetupPage = lazy(() => import('@/pages/auth/SetupPage'));
+const LoginPage            = lazy(() => import('@/pages/auth/LoginPage'));
+const VerifyEmailPage      = lazy(() => import('@/pages/auth/VerifyEmailPage'));
+const ForgotPasswordPage   = lazy(() => import('@/pages/auth/ForgotPasswordPage'));
+const ResetPasswordPage    = lazy(() => import('@/pages/auth/ResetPasswordPage'));
+const SetupPage            = lazy(() => import('@/pages/auth/SetupPage'));
 
 // Builder portal
-const DashboardPage = lazy(() => import('@/pages/builder/DashboardPage'));
-const BuildingsPage = lazy(() => import('@/pages/builder/BuildingsPage'));
-const BuildingManagePage = lazy(() => import('@/pages/builder/BuildingManagePage'));
-const TenantsPage = lazy(() => import('@/pages/builder/TenantsPage'));
-const TenantDetailPage = lazy(() => import('@/pages/builder/TenantDetailPage'));
-const AgreementsPage = lazy(() => import('@/pages/builder/AgreementsPage'));
-const AgreementDetailPage = lazy(() => import('@/pages/builder/AgreementDetailPage'));
-const DocumentsPage = lazy(() => import('@/pages/builder/DocumentsPage'));
-const ExpensesPage = lazy(() => import('@/pages/builder/ExpensesPage'));
-const InquiriesPage = lazy(() => import('@/pages/builder/InquiriesPage'));
-const ManagersPage = lazy(() => import('@/pages/builder/ManagersPage'));
-const BillingPage = lazy(() => import('@/pages/builder/BillingPage'));
-const ActivityPage = lazy(() => import('@/pages/builder/ActivityPage'));
-const ProfilePage = lazy(() => import('@/pages/builder/ProfilePage'));
+const DashboardPage        = lazy(() => import('@/pages/builder/DashboardPage'));
+const BuildingsPage        = lazy(() => import('@/pages/builder/BuildingsPage'));
+const BuildingManagePage   = lazy(() => import('@/pages/builder/BuildingManagePage'));
+const TenantsPage          = lazy(() => import('@/pages/builder/TenantsPage'));
+const TenantDetailPage     = lazy(() => import('@/pages/builder/TenantDetailPage'));
+const AgreementsPage       = lazy(() => import('@/pages/builder/AgreementsPage'));
+const AgreementDetailPage  = lazy(() => import('@/pages/builder/AgreementDetailPage'));
+const DocumentsPage        = lazy(() => import('@/pages/builder/DocumentsPage'));
+const ExpensesPage         = lazy(() => import('@/pages/builder/ExpensesPage'));
+const InquiriesPage        = lazy(() => import('@/pages/builder/InquiriesPage'));
+const ManagersPage         = lazy(() => import('@/pages/builder/ManagersPage'));
+const BillingPage          = lazy(() => import('@/pages/builder/BillingPage'));
+const ActivityPage         = lazy(() => import('@/pages/builder/ActivityPage'));
+const ProfilePage          = lazy(() => import('@/pages/builder/ProfilePage'));
+const SubscriptionExpiredPage = lazy(() => import('@/pages/builder/SubscriptionExpiredPage'));
 
 // Super admin portal
-const SuperDashboardPage = lazy(() => import('@/pages/superadmin/SuperDashboardPage'));
-const BuildersPage = lazy(() => import('@/pages/superadmin/BuildersPage'));
-const BuilderDetailPage = lazy(() => import('@/pages/superadmin/BuilderDetailPage'));
-const SAModerationPage = lazy(() => import('@/pages/superadmin/BuildingsModerationPage'));
-const SASubscriptionsPage = lazy(() => import('@/pages/superadmin/SubscriptionsPage'));
-const SAActivityPage = lazy(() => import('@/pages/superadmin/ActivityLogsPage'));
-const SASettingsPage = lazy(() => import('@/pages/superadmin/SettingsPage'));
+const SuperDashboardPage   = lazy(() => import('@/pages/superadmin/SuperDashboardPage'));
+const BuildersPage         = lazy(() => import('@/pages/superadmin/BuildersPage'));
+const BuilderDetailPage    = lazy(() => import('@/pages/superadmin/BuilderDetailPage'));
+const SAModerationPage     = lazy(() => import('@/pages/superadmin/BuildingsModerationPage'));
+const SASubscriptionsPage  = lazy(() => import('@/pages/superadmin/SubscriptionsPage'));
+const SAActivityPage       = lazy(() => import('@/pages/superadmin/ActivityLogsPage'));
+const SASettingsPage       = lazy(() => import('@/pages/superadmin/SettingsPage'));
+const SADemoRequestsPage   = lazy(() => import('@/pages/superadmin/DemoRequestsPage'));
 
-const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'));
+const NotFoundPage         = lazy(() => import('@/pages/NotFoundPage'));
 
 function App() {
   return (
     <Suspense fallback={<PageLoader />}>
       <Routes>
         <Route element={<PublicLayout />}>
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/listings" element={<ListingsPage />} />
-          <Route path="/listings/:slug" element={<BuildingDetailPage />} />
-          <Route path="/listings/:slug/rooms/:unitId" element={<RoomDetailPage />} />
-          <Route path="/get-started" element={<GetStartedPage />} />
-          <Route path="/checkout/:status" element={<CheckoutResultPage />} />
+          <Route path="/"                              element={<LandingPage />} />
+          <Route path="/listings"                      element={<ListingsPage />} />
+          <Route path="/listings/:slug"                element={<BuildingDetailPage />} />
+          <Route path="/listings/:slug/rooms/:unitId"  element={<RoomDetailPage />} />
+          <Route path="/get-started"                   element={<GetStartedPage />} />
         </Route>
 
         <Route path="/sign/:token" element={<SignAgreementPage />} />
 
         <Route element={<AuthLayout />}>
-          <Route path="/login" element={<GuestRoute><LoginPage /></GuestRoute>} />
-          {/* /register intentionally omitted — onboarding flows through /get-started */}
-          <Route path="/verify-email" element={<VerifyEmailPage />} />
+          <Route path="/login"           element={<GuestRoute><LoginPage /></GuestRoute>} />
+          <Route path="/verify-email"    element={<VerifyEmailPage />} />
           <Route path="/forgot-password" element={<GuestRoute><ForgotPasswordPage /></GuestRoute>} />
-          <Route path="/reset-password" element={<GuestRoute><ResetPasswordPage /></GuestRoute>} />
-          <Route path="/setup" element={<SetupPage />} />
+          <Route path="/reset-password"  element={<GuestRoute><ResetPasswordPage /></GuestRoute>} />
+          <Route path="/setup"           element={<SetupPage />} />
         </Route>
 
+        {/* Subscription expired wall — accessible without full layout */}
+        <Route path="/subscription-expired" element={<SubscriptionExpiredPage />} />
+
         <Route path="/dashboard" element={<RoleRoute roles={['admin', 'manager']}><BuilderLayout /></RoleRoute>}>
-          <Route index element={<DashboardPage />} />
-          <Route path="buildings" element={<BuildingsPage />} />
-          <Route path="buildings/:id" element={<BuildingManagePage />} />
-          <Route path="tenants" element={<TenantsPage />} />
-          <Route path="tenants/:id" element={<TenantDetailPage />} />
-          <Route path="agreements" element={<AgreementsPage />} />
-          <Route path="agreements/:id" element={<AgreementDetailPage />} />
-          <Route path="documents" element={<DocumentsPage />} />
-          <Route path="expenses" element={<ExpensesPage />} />
-          <Route path="inquiries" element={<InquiriesPage />} />
-          <Route path="managers" element={<ManagersPage />} />
-          <Route path="billing" element={<BillingPage />} />
-          <Route path="activity" element={<ActivityPage />} />
-          <Route path="profile" element={<ProfilePage />} />
+          <Route index                  element={<DashboardPage />} />
+          <Route path="buildings"       element={<BuildingsPage />} />
+          <Route path="buildings/:id"   element={<BuildingManagePage />} />
+          <Route path="tenants"         element={<TenantsPage />} />
+          <Route path="tenants/:id"     element={<TenantDetailPage />} />
+          <Route path="agreements"      element={<AgreementsPage />} />
+          <Route path="agreements/:id"  element={<AgreementDetailPage />} />
+          <Route path="documents"       element={<DocumentsPage />} />
+          <Route path="expenses"        element={<ExpensesPage />} />
+          <Route path="inquiries"       element={<InquiriesPage />} />
+          <Route path="managers"        element={<ManagersPage />} />
+          <Route path="billing"         element={<BillingPage />} />
+          <Route path="activity"        element={<ActivityPage />} />
+          <Route path="profile"         element={<ProfilePage />} />
         </Route>
 
         <Route path="/super-admin" element={<RoleRoute roles={['super_admin']}><SuperAdminLayout /></RoleRoute>}>
-          <Route index element={<SuperDashboardPage />} />
-          <Route path="builders" element={<BuildersPage />} />
-          <Route path="builders/:id" element={<BuilderDetailPage />} />
-          <Route path="buildings" element={<SAModerationPage />} />
-          <Route path="subscriptions" element={<SASubscriptionsPage />} />
-          <Route path="activity" element={<SAActivityPage />} />
-          <Route path="settings" element={<SASettingsPage />} />
+          <Route index                  element={<SuperDashboardPage />} />
+          <Route path="builders"        element={<BuildersPage />} />
+          <Route path="builders/:id"    element={<BuilderDetailPage />} />
+          <Route path="buildings"       element={<SAModerationPage />} />
+          <Route path="subscriptions"   element={<SASubscriptionsPage />} />
+          <Route path="demo-requests"   element={<SADemoRequestsPage />} />
+          <Route path="activity"        element={<SAActivityPage />} />
+          <Route path="settings"        element={<SASettingsPage />} />
         </Route>
 
         <Route path="*" element={<NotFoundPage />} />
