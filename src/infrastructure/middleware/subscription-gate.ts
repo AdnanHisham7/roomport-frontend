@@ -4,8 +4,13 @@ import mongoose from 'mongoose';
 
 /**
  * requireActiveSubscription middleware
- * Attach after `authenticate` on any builder-facing route group.
+ * Blocks access when:
+ *   1. No subscription exists for the builder
+ *   2. Subscription status is not 'active'
+ *   3. No paid period covers the current date
+ *
  * Super admins always pass through.
+ * Managers pass through if their owner has an active paid subscription.
  */
 export const requireActiveSubscription = async (
   req: Request,
@@ -16,15 +21,18 @@ export const requireActiveSubscription = async (
     const user = req.user;
     if (!user) { res.status(401).json({ message: 'Unauthenticated.' }); return; }
 
-    // Super admins are exempt
     if (user.role === 'super_admin') { next(); return; }
 
-    const userId = user.userId;
-    const sub = await SubscriptionModel.findOne({ userId: new mongoose.Types.ObjectId(userId), status: 'active' }).lean();
+    const userId = new mongoose.Types.ObjectId(user.userId);
+
+    const sub = await SubscriptionModel.findOne({
+      userId,
+      status: 'active',
+    }).lean();
 
     if (!sub) {
       res.status(402).json({
-        message:    'Subscription not active.',
+        message:    'No active subscription found.',
         suggestion: 'Contact your administrator to activate or renew your subscription.',
         code:       'SUBSCRIPTION_INACTIVE',
       });
@@ -41,8 +49,8 @@ export const requireActiveSubscription = async (
 
     if (!activePeriod) {
       res.status(402).json({
-        message:    'Subscription payment pending for current period.',
-        suggestion: 'Contact your administrator to mark the current period as paid.',
+        message:    'Your subscription payment for the current period is pending.',
+        suggestion: 'Please pay for the current billing period to regain access.',
         code:       'SUBSCRIPTION_PERIOD_UNPAID',
       });
       return;
@@ -51,7 +59,6 @@ export const requireActiveSubscription = async (
     next();
   } catch (err) {
     console.error('[requireActiveSubscription] Error:', err);
-    // Fail open — don't block on middleware errors
     next();
   }
 };

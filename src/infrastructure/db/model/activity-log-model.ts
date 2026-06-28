@@ -37,6 +37,10 @@ const ActivityLogSchema = new Schema(
     userAgent: {
       type: String,
     },
+    description: {
+      type: String,
+      default: null,
+    },
     userId: {
       type: Schema.Types.ObjectId,
       ref: 'User',
@@ -46,7 +50,6 @@ const ActivityLogSchema = new Schema(
   { timestamps: true }
 );
 
-// Indexes for faster querying
 ActivityLogSchema.index({ buildingId: 1 });
 ActivityLogSchema.index({ userId: 1 });
 ActivityLogSchema.index({ entityId: 1, entityType: 1 });

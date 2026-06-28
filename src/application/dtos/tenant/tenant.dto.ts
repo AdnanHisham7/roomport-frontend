@@ -15,7 +15,7 @@ export interface CreateTenantDTO {
   dueDate:              number;
   moveInDate?:          Date;
   terms?:               string;
-  // Pre-validation of agreement dates before tenant is persisted
+  createdBy?:           string;
   agreementStartDate?:  string;
   agreementEndDate?:    string;
 }
@@ -49,6 +49,7 @@ export interface TenantResponseDTO {
   status:            TenantStatus;
   unitId?:           string;
   buildingId?:       string;
+  createdBy?:        string;
   job?:              string;
   notes?:            string;
   emergencyContact?: IEmergencyContact;

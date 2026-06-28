@@ -28,6 +28,7 @@ const TenantSchema = new Schema<ITenantDocument>(
     unitId:      { type: Schema.Types.ObjectId, ref: 'Unit',     default: null } as any,
     buildingId:  { type: Schema.Types.ObjectId, ref: 'Property', default: null, index: true } as any,
     userId:      { type: Schema.Types.ObjectId, ref: 'User',     default: null } as any,
+    createdBy:   { type: Schema.Types.ObjectId, ref: 'User',     default: null, index: true } as any,
     notes:       { type: String, default: null },
     job:         { type: String, default: null, trim: true },
     emergencyContact: { type: EmergencyContactSchema, default: null },

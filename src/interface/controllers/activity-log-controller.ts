@@ -8,7 +8,12 @@ export class ActivityLogController {
     private buildingRepo: IBuildingRepository
   ) {}
 
-  /** For non-super-admins, restricts a building-scoped query to a building they actually own/manage. */
+  private async getBuilderBuildingIds(userId: string): Promise<string[]> {
+    const owned   = await this.buildingRepo.findAll({ ownerId: userId });
+    const managed = await this.buildingRepo.findAll({ managerId: userId });
+    return [...new Set([...owned, ...managed].map(b => b._id!))];
+  }
+
   private async assertBuildingScope(req: Request, buildingId?: string): Promise<boolean> {
     const user = req.user!;
     if (user.role === 'super_admin') return true;
@@ -22,9 +27,9 @@ export class ActivityLogController {
     try {
       const data = {
         ...req.body,
-        userId: req.user!.userId,    // never trust a client-supplied actor id
+        userId:    req.user!.userId,
         ipAddress: req.ip || req.headers['x-forwarded-for'],
-        userAgent: req.headers['user-agent']
+        userAgent: req.headers['user-agent'],
       };
 
       const activityLog = await this.activityLogUsecase.logActivity(data);
@@ -37,13 +42,51 @@ export class ActivityLogController {
   async getActivities(req: Request, res: Response): Promise<void> {
     try {
       const { buildingId, page, limit, ...rest } = req.query as Record<string, string>;
+      const user = req.user!;
 
-      if (req.user!.role !== 'super_admin') {
-        const allowed = await this.assertBuildingScope(req, buildingId);
-        if (!allowed) {
-          res.status(403).json({ success: false, message: 'Specify a buildingId you own or manage to view its activity.' });
+      if (user.role !== 'super_admin') {
+        if (buildingId) {
+          const allowed = await this.assertBuildingScope(req, buildingId);
+          if (!allowed) {
+            res.status(403).json({ success: false, message: 'You do not have access to this building.' });
+            return;
+          }
+          const filter = { ...rest, buildingId };
+          const result = await this.activityLogUsecase.getActivitiesPaginated(
+            filter as any,
+            Number(page) || 1,
+            Math.min(Number(limit) || 20, 100)
+          );
+          res.status(200).json({ success: true, ...result });
           return;
         }
+
+        const buildingIds = await this.getBuilderBuildingIds(user.userId);
+        if (!buildingIds.length) {
+          res.status(200).json({ success: true, data: [], total: 0, page: 1, limit: 20 });
+          return;
+        }
+
+        const allResults = await Promise.all(
+          buildingIds.map(bid =>
+            this.activityLogUsecase.getActivitiesPaginated(
+              { ...rest, buildingId: bid } as any,
+              1,
+              1000
+            )
+          )
+        );
+
+        const merged = allResults.flatMap(r => r.data)
+          .sort((a, b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime());
+
+        const pg   = Number(page) || 1;
+        const lim  = Math.min(Number(limit) || 20, 100);
+        const skip = (pg - 1) * lim;
+        const slice = merged.slice(skip, skip + lim);
+
+        res.status(200).json({ success: true, data: slice, total: merged.length, page: pg, limit: lim });
+        return;
       }
 
       const filter = { ...rest, ...(buildingId ? { buildingId } : {}) };

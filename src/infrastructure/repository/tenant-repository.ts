@@ -2,7 +2,6 @@ import { ITenant } from "../../domain/entities/Tenant";
 import { ITenantRepository } from "../../domain/repository/tenant-repository-impl";
 import { TenantModel } from "../db/model/tenant-model";
 
-
 export class TenantRepository implements ITenantRepository {
 
   private toStringId(doc: { _id: unknown }): string {
@@ -17,6 +16,7 @@ export class TenantRepository implements ITenantRepository {
       unitId:     obj.unitId?.toString()     ?? undefined,
       buildingId: obj.buildingId?.toString() ?? undefined,
       userId:     obj.userId?.toString()     ?? undefined,
+      createdBy:  obj.createdBy?.toString()  ?? undefined,
       addressId:  obj.addressId?.toString()  ?? undefined,
       renewedFromTenantId: obj.renewedFromTenantId?.toString() ?? undefined,
       document:   (obj.document ?? []).map((d: any) => d?.toString()),
@@ -30,12 +30,13 @@ export class TenantRepository implements ITenantRepository {
   }
 
   async findAll(
-    filter?: Partial<Pick<ITenant, 'buildingId' | 'unitId' | 'status'>>
+    filter?: Partial<Pick<ITenant, 'buildingId' | 'unitId' | 'status'>> & { createdBy?: string }
   ): Promise<ITenant[]> {
     const query: Record<string, any> = {};
     if (filter?.buildingId) query.buildingId = filter.buildingId;
     if (filter?.unitId)     query.unitId     = filter.unitId;
     if (filter?.status)     query.status     = filter.status;
+    if (filter?.createdBy)  query.createdBy  = filter.createdBy;
 
     const docs = await TenantModel.find(query).lean();
     return docs.map((d) => this.toEntity(d));

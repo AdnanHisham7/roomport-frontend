@@ -1,6 +1,6 @@
 import { ITenant } from '../../../domain/entities/Tenant';
 import { ITenantRepository } from '../../../domain/repository/tenant-repository-impl';
-import { BadRequestError, NotFoundError } from '../../../shared/error/app-error';
+import { BadRequestError, ForbiddenError, NotFoundError } from '../../../shared/error/app-error';
 import { CreateTenantDTO, TenantResponseDTO, UpdateTenantDTO } from '../../dtos/tenant/tenant.dto';
 import { ITenantUseCases } from '../../interface/tenant/tenant-usecase-impl';
 import { IUnitRepository } from '../../../domain/repository/unit-repository-impl';
@@ -18,6 +18,7 @@ function toResponse(t: ITenant): TenantResponseDTO {
     status:           t.status,
     unitId:           t.unitId,
     buildingId:       t.buildingId,
+    createdBy:        t.createdBy,
     job:              t.job,
     notes:            t.notes,
     emergencyContact: t.emergencyContact,
@@ -26,6 +27,7 @@ function toResponse(t: ITenant): TenantResponseDTO {
     dueDate:          t.dueDate,
     moveInDate:       t.moveInDate,
     vacateDate:       t.vacateDate,
+    paidAt:           t.paidAt,
     terms:            t.terms,
     createdAt:        t.createdAt,
     updatedAt:        t.updatedAt,
@@ -47,7 +49,6 @@ export class TenantUseCases implements ITenantUseCases {
       throw new BadRequestError('rentAmount must be a positive number.', 'Enter a valid rent amount.');
     }
 
-    // Validate agreement dates BEFORE creating the tenant to prevent orphan records
     if (data.agreementStartDate && data.agreementEndDate) {
       const start = new Date(data.agreementStartDate);
       const end   = new Date(data.agreementEndDate);
@@ -62,7 +63,6 @@ export class TenantUseCases implements ITenantUseCases {
       }
     }
 
-    // Check if unit is already occupied before attempting creation
     if (data.unitId) {
       const unit = await this.unitRepo.findById(data.unitId);
       if (!unit) {
@@ -91,28 +91,40 @@ export class TenantUseCases implements ITenantUseCases {
       entityId:    tenant._id,
       buildingId:  tenant.buildingId,
       unitId:      tenant.unitId,
-      userId:      tenant.userId as any,
-      description: `Tenant ${tenant.firstName} ${tenant.lastName} created${tenant.unitId ? ` and assigned to unit` : ''}. Rent: ₹${tenant.rentAmount}/${tenant.rentType}.`,
+      userId:      data.createdBy ?? (tenant.userId as any),
+      description: `Tenant ${tenant.firstName} ${tenant.lastName} created${tenant.unitId ? ' and assigned to unit' : ''}. Rent: ₹${tenant.rentAmount}/${tenant.rentType}.`,
       metadata:    { firstName: tenant.firstName, lastName: tenant.lastName, rentAmount: tenant.rentAmount, rentType: tenant.rentType },
     }).catch(console.error);
 
     return toResponse(tenant);
   }
 
-  async getAll(filter?: { buildingId?: string; unitId?: string; status?: string }): Promise<TenantResponseDTO[]> {
-    const tenants = await this.tenantRepository.findAll(filter as any);
+  async getAll(filter?: { buildingId?: string; unitId?: string; status?: string; ownerId?: string }): Promise<TenantResponseDTO[]> {
+    const repoFilter: Record<string, any> = {};
+    if (filter?.buildingId) repoFilter.buildingId = filter.buildingId;
+    if (filter?.unitId)     repoFilter.unitId     = filter.unitId;
+    if (filter?.status)     repoFilter.status     = filter.status;
+    if (filter?.ownerId)    repoFilter.createdBy  = filter.ownerId;
+
+    const tenants = await this.tenantRepository.findAll(repoFilter);
     return tenants.map(toResponse);
   }
 
-  async getById(id: string): Promise<TenantResponseDTO> {
+  async getById(id: string, ownerId?: string): Promise<TenantResponseDTO> {
     const tenant = await this.tenantRepository.findById(id);
     if (!tenant) throw new NotFoundError('Tenant not found.', 'Check the tenant ID and try again.');
+    if (ownerId && tenant.createdBy && tenant.createdBy !== ownerId) {
+      throw new ForbiddenError('You do not have access to this tenant.', 'This tenant belongs to a different builder.');
+    }
     return toResponse(tenant);
   }
 
-  async update(id: string, data: UpdateTenantDTO): Promise<TenantResponseDTO> {
+  async update(id: string, data: UpdateTenantDTO, ownerId?: string): Promise<TenantResponseDTO> {
     const existing = await this.tenantRepository.findById(id);
     if (!existing) throw new NotFoundError('Tenant not found.', 'Check the tenant ID and try again.');
+    if (ownerId && existing.createdBy && existing.createdBy !== ownerId) {
+      throw new ForbiddenError('You do not have access to this tenant.', 'This tenant belongs to a different builder.');
+    }
 
     if (data.unitId && data.unitId !== existing.unitId) {
       if (existing.unitId) await this.unitRepo.update(existing.unitId, { isOccupied: false, status: 'available' });
@@ -130,7 +142,7 @@ export class TenantUseCases implements ITenantUseCases {
         entityId:    updated!._id,
         buildingId:  updated!.buildingId,
         unitId:      updated!.unitId,
-        userId:      updated!.userId as any,
+        userId:      ownerId ?? (updated!.userId as any),
         description: `Tenant ${updated!.firstName} ${updated!.lastName} status changed from ${existing.status} to ${data.status}.`,
         metadata:    { oldStatus: existing.status, newStatus: data.status },
       }).catch(console.error);
@@ -141,7 +153,7 @@ export class TenantUseCases implements ITenantUseCases {
         entityId:    updated!._id,
         buildingId:  updated!.buildingId,
         unitId:      updated!.unitId,
-        userId:      updated!.userId as any,
+        userId:      ownerId ?? (updated!.userId as any),
         description: `Tenant ${updated!.firstName} ${updated!.lastName} profile updated.`,
       }).catch(console.error);
     }
@@ -149,9 +161,12 @@ export class TenantUseCases implements ITenantUseCases {
     return toResponse(updated!);
   }
 
-  async delete(id: string): Promise<void> {
+  async delete(id: string, ownerId?: string): Promise<void> {
     const existing = await this.tenantRepository.findById(id);
     if (!existing) throw new NotFoundError('Tenant not found.', 'Check the tenant ID and try again.');
+    if (ownerId && existing.createdBy && existing.createdBy !== ownerId) {
+      throw new ForbiddenError('You do not have access to this tenant.', 'This tenant belongs to a different builder.');
+    }
 
     if (existing.unitId) {
       await this.unitRepo.update(existing.unitId, { isOccupied: false, status: 'available' });
@@ -165,7 +180,7 @@ export class TenantUseCases implements ITenantUseCases {
       entityId:    existing._id,
       buildingId:  existing.buildingId,
       unitId:      existing.unitId,
-      userId:      existing.userId as any,
+      userId:      ownerId ?? (existing.userId as any),
       description: `Tenant ${existing.firstName} ${existing.lastName} was deleted.`,
     }).catch(console.error);
   }
@@ -178,9 +193,12 @@ export class TenantUseCases implements ITenantUseCases {
     return [];
   }
 
-  async transferTenant(tenantId: string, targetUnitId: string, adminUserId: string): Promise<{ tenant: TenantResponseDTO; message: string }> {
+  async transferTenant(tenantId: string, targetUnitId: string, adminUserId: string, ownerId?: string): Promise<{ tenant: TenantResponseDTO; message: string }> {
     const tenant = await this.tenantRepository.findById(tenantId);
     if (!tenant) throw new NotFoundError('Tenant not found.');
+    if (ownerId && tenant.createdBy && tenant.createdBy !== ownerId) {
+      throw new ForbiddenError('You do not have access to this tenant.', 'This tenant belongs to a different builder.');
+    }
 
     const targetUnit = await this.unitRepo.findById(targetUnitId);
     if (!targetUnit) throw new NotFoundError('Target room not found.');
@@ -193,12 +211,10 @@ export class TenantUseCases implements ITenantUseCases {
     let displacedTenantInfo: string | null = null;
 
     if (targetUnit.status === 'occupied' || targetUnit.isOccupied) {
-      // Swap: find the tenant in the target unit
       const tenantsInTarget = await this.tenantRepository.findAll({ unitId: targetUnitId });
       const targetTenant = tenantsInTarget.find(t => t._id !== tenantId);
 
       if (targetTenant) {
-        // Move target tenant to source unit
         await this.tenantRepository.update(targetTenant._id!, {
           unitId: sourceUnitId ?? undefined,
           buildingId: sourceUnitId ? tenant.buildingId : undefined,
@@ -211,13 +227,11 @@ export class TenantUseCases implements ITenantUseCases {
         displacedTenantInfo = `${targetTenant.firstName} ${targetTenant.lastName} moved to ${sourceUnitId ? `room ${sourceUnitId}` : 'no room'}`;
       }
     } else {
-      // Target is available — vacate source
       if (sourceUnitId) {
         await this.unitRepo.update(sourceUnitId, { isOccupied: false, status: 'available' });
       }
     }
 
-    // Move tenant A to target unit
     const updatedTenant = await this.tenantRepository.update(tenantId, {
       unitId:     targetUnitId,
       buildingId: targetUnit.buildingId,

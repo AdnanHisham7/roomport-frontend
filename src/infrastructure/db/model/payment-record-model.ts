@@ -8,7 +8,7 @@ export interface IPaymentRecord {
   tenantId:    string;
   buildingId:  string;
   unitId?:     string;
-  periodLabel: string;    // "July 2025", "Q2 2025", "2025"
+  periodLabel: string;
   periodStart: Date;
   periodEnd:   Date;
   amount:      number;
@@ -43,6 +43,8 @@ const PaymentRecordSchema = new Schema<IPaymentRecordDocument>(
   { timestamps: true }
 );
 
-PaymentRecordSchema.index({ tenantId: 1, periodStart: 1 });
+// Enforce one record per tenant per period at the database level
+PaymentRecordSchema.index({ tenantId: 1, periodStart: 1, periodEnd: 1 }, { unique: true });
+PaymentRecordSchema.index({ buildingId: 1, periodStart: 1 });
 
 export const PaymentRecordModel = mongoose.model<IPaymentRecordDocument>('PaymentRecord', PaymentRecordSchema);

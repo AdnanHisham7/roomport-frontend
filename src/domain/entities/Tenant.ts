@@ -13,18 +13,19 @@ export interface ITenant {
   lastName:          string;
   email:             string;
   phone:             string;
-  document?:         string[];       // array of Document ObjectIds
-  addressId?:        string;         // ObjectId ref to Address
+  document?:         string[];
+  addressId?:        string;
   status:            TenantStatus;
-  unitId?:           string;         // current unit ObjectId
-  buildingId?:       string;         // current building ObjectId
-  userId?:           string;         // linked user account (optional)
+  unitId?:           string;
+  buildingId?:       string;
+  userId?:           string;
+  createdBy?:        string;
   notes?:            string;
   job?:              string;
   emergencyContact?: IEmergencyContact;
   rentType:          RentType;
   rentAmount:        number;
-  dueDate:           number;         // day of month e.g. 5
+  dueDate:           number;
   paidAt?:           Date;
   vacateDate?:       Date;
   moveInDate?:       Date;
