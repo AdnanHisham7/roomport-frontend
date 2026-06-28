@@ -9,6 +9,7 @@ import { useGetPricingQuery, useBookDemoMutation } from '@/store/api/subscriptio
 import { formatCurrency } from '@/utils/format';
 import { cn } from '@/utils/cn';
 import type { BillingCycle } from '@/types/platform';
+import { useLocation } from 'react-router-dom';
 
 interface FormValues {
   firstName:         string;
@@ -31,7 +32,9 @@ export default function GetStartedPage() {
   const { data: pricingData }    = useGetPricingQuery();
   const [bookDemo, { isLoading }] = useBookDemoMutation();
   const [submitted, setSubmitted] = useState(false);
-  const [cycle, setCycle]        = useState<BillingCycle>('monthly');
+  const location = useLocation();
+  const initialCycle = location.state?.billingCycle || 'monthly';
+  const [cycle, setCycle]        = useState<BillingCycle>(initialCycle);
   const pricing                  = pricingData?.data;
 
   const { register, handleSubmit, watch, formState: { errors } } = useForm<FormValues>({

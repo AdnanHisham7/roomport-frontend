@@ -1,12 +1,13 @@
 import { lazy, Suspense } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { PageLoader } from '@/components/ui/Avatar';
-import { RoleRoute, GuestRoute } from '@/routes/guards';
+import { RoleRoute, GuestRoute, SubscriptionGuard } from '@/routes/guards';
 
-import { PublicLayout } from '@/components/layout/PublicLayout';
-import { AuthLayout } from '@/components/layout/AuthLayout';
-import { BuilderLayout } from '@/components/layout/BuilderLayout';
-import { SuperAdminLayout } from '@/components/layout/SuperAdminLayout';
+import { PublicLayout }      from '@/components/layout/PublicLayout';
+import { AuthLayout }        from '@/components/layout/AuthLayout';
+import { BuilderLayout }     from '@/components/layout/BuilderLayout';
+import { SuperAdminLayout }  from '@/components/layout/SuperAdminLayout';
+import ScrollToTop           from '@/components/ui/ScrollToTop';
 
 // Public
 const LandingPage          = lazy(() => import('@/pages/public/LandingPage'));
@@ -55,6 +56,7 @@ const NotFoundPage         = lazy(() => import('@/pages/NotFoundPage'));
 function App() {
   return (
     <Suspense fallback={<PageLoader />}>
+      <ScrollToTop />
       <Routes>
         <Route element={<PublicLayout />}>
           <Route path="/"                              element={<LandingPage />} />
@@ -74,35 +76,44 @@ function App() {
           <Route path="/setup"           element={<SetupPage />} />
         </Route>
 
-        {/* Subscription expired wall — accessible without full layout */}
-        <Route path="/subscription-expired" element={<SubscriptionExpiredPage />} />
+        {/* Subscription expired wall — no sidebar, billing accessible */}
+        <Route path="/subscription-expired" element={<RoleRoute roles={['admin', 'manager']}><SubscriptionExpiredPage /></RoleRoute>} />
 
-        <Route path="/dashboard" element={<RoleRoute roles={['admin', 'manager']}><BuilderLayout /></RoleRoute>}>
-          <Route index                  element={<DashboardPage />} />
-          <Route path="buildings"       element={<BuildingsPage />} />
-          <Route path="buildings/:id"   element={<BuildingManagePage />} />
-          <Route path="tenants"         element={<TenantsPage />} />
-          <Route path="tenants/:id"     element={<TenantDetailPage />} />
-          <Route path="agreements"      element={<AgreementsPage />} />
-          <Route path="agreements/:id"  element={<AgreementDetailPage />} />
-          <Route path="documents"       element={<DocumentsPage />} />
-          <Route path="expenses"        element={<ExpensesPage />} />
-          <Route path="inquiries"       element={<InquiriesPage />} />
-          <Route path="managers"        element={<ManagersPage />} />
-          <Route path="billing"         element={<BillingPage />} />
-          <Route path="activity"        element={<ActivityPage />} />
-          <Route path="profile"         element={<ProfilePage />} />
+        <Route
+          path="/dashboard"
+          element={
+            <RoleRoute roles={['admin', 'manager']}>
+              <SubscriptionGuard>
+                <BuilderLayout />
+              </SubscriptionGuard>
+            </RoleRoute>
+          }
+        >
+          <Route index                 element={<DashboardPage />} />
+          <Route path="buildings"      element={<BuildingsPage />} />
+          <Route path="buildings/:id"  element={<BuildingManagePage />} />
+          <Route path="tenants"        element={<TenantsPage />} />
+          <Route path="tenants/:id"    element={<TenantDetailPage />} />
+          <Route path="agreements"     element={<AgreementsPage />} />
+          <Route path="agreements/:id" element={<AgreementDetailPage />} />
+          <Route path="documents"      element={<DocumentsPage />} />
+          <Route path="expenses"       element={<ExpensesPage />} />
+          <Route path="inquiries"      element={<InquiriesPage />} />
+          <Route path="managers"       element={<ManagersPage />} />
+          <Route path="billing"        element={<BillingPage />} />
+          <Route path="activity"       element={<ActivityPage />} />
+          <Route path="profile"        element={<ProfilePage />} />
         </Route>
 
         <Route path="/super-admin" element={<RoleRoute roles={['super_admin']}><SuperAdminLayout /></RoleRoute>}>
-          <Route index                  element={<SuperDashboardPage />} />
-          <Route path="builders"        element={<BuildersPage />} />
-          <Route path="builders/:id"    element={<BuilderDetailPage />} />
-          <Route path="buildings"       element={<SAModerationPage />} />
-          <Route path="subscriptions"   element={<SASubscriptionsPage />} />
-          <Route path="demo-requests"   element={<SADemoRequestsPage />} />
-          <Route path="activity"        element={<SAActivityPage />} />
-          <Route path="settings"        element={<SASettingsPage />} />
+          <Route index                 element={<SuperDashboardPage />} />
+          <Route path="builders"       element={<BuildersPage />} />
+          <Route path="builders/:id"   element={<BuilderDetailPage />} />
+          <Route path="buildings"      element={<SAModerationPage />} />
+          <Route path="subscriptions"  element={<SASubscriptionsPage />} />
+          <Route path="activity"       element={<SAActivityPage />} />
+          <Route path="settings"       element={<SASettingsPage />} />
+          <Route path="demo-requests"  element={<SADemoRequestsPage />} />
         </Route>
 
         <Route path="*" element={<NotFoundPage />} />

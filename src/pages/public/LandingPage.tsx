@@ -1,6 +1,7 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Building2, Layers3, DoorOpen, FileSignature, ArrowRight, Star } from 'lucide-react';
+import { Building2, Layers3, DoorOpen, FileSignature, ArrowRight, Star, Check } from 'lucide-react';
 import { Button } from '@/components/ui';
 import { Card } from '@/components/ui/Card';
 import { useGetFeaturedBuildingsQuery } from '@/store/api/publicApi';
@@ -14,10 +15,34 @@ const features = [
   { icon: Building2, title: 'Multi-building portfolio', desc: 'Manage dozens of buildings from one unified dashboard.' },
 ];
 
+const planFeatures = [
+  'Unlimited floors per building',
+  'Real-time occupancy tracking',
+  'E-signature lease agreements',
+  'Tenant & expense management',
+  'Inquiry leads from public listings',
+  'Activity logs & audit trail',
+  'Document storage per tenant',
+];
+
 export default function LandingPage() {
+  const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
   const { data: featuredData } = useGetFeaturedBuildingsQuery({ limit: 6 });
   const { data: pricingData } = useGetPricingQuery();
   const pricing = pricingData?.data;
+
+  // Pricing calculations adapted from V2
+  const pricePerBuilding = billingCycle === 'monthly'
+    ? pricing?.monthlyPricePerBuilding ?? pricing?.pricePerBuilding ?? 0
+    : pricing?.yearlyPricePerBuilding  ?? pricing?.pricePerBuilding ?? 0;
+
+  const pricePerUnit = billingCycle === 'monthly'
+    ? pricing?.monthlyPricePerUnit ?? pricing?.pricePerUnit ?? 0
+    : pricing?.yearlyPricePerUnit  ?? pricing?.pricePerUnit ?? 0;
+
+  const yearlyDiscount = pricing
+    ? Math.round((1 - (pricing.yearlyPricePerBuilding / (pricing.monthlyPricePerBuilding * 12))) * 100)
+    : 0;
 
   return (
     <div className="overflow-hidden">
@@ -94,29 +119,76 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Pricing */}
+      {/* Pricing (Integrated from V2) */}
       <section id="pricing" className="px-4 py-20 sm:px-6">
         <div className="mx-auto max-w-xl text-center">
           <h2 className="font-display text-2xl font-semibold text-ink">Simple, transparent pricing</h2>
           <p className="mt-3 text-sm text-ink-soft">Pay only for what you use. No seat fees, no hidden costs.</p>
+
           {pricing && (
-            <Card padding="lg" className="mt-8 text-left">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="font-display text-2xl font-semibold text-ink">{formatCurrency(pricing.pricePerBuilding)}<span className="text-sm font-normal text-ink-soft">/building/year</span></p>
-                  <p className="mt-1 font-display text-lg text-ink-soft">{formatCurrency(pricing.pricePerUnit)}<span className="text-sm font-normal">/room/year</span></p>
-                </div>
-                <span className="rounded-full bg-crimson-50 px-3 py-1 text-xs font-semibold text-crimson-600">Annual</span>
+            <>
+              {/* Toggle */}
+              <div className="mt-6 inline-flex items-center gap-1 rounded-xl bg-paper-dim p-1">
+                <button
+                  onClick={() => setBillingCycle('monthly')}
+                  className={`rounded-lg px-4 py-1.5 text-sm font-medium transition-all ${billingCycle === 'monthly' ? 'bg-white text-ink shadow-sm' : 'text-ink-soft hover:text-ink'}`}
+                >
+                  Monthly
+                </button>
+                <button
+                  onClick={() => setBillingCycle('yearly')}
+                  className={`flex items-center gap-1.5 rounded-lg px-4 py-1.5 text-sm font-medium transition-all ${billingCycle === 'yearly' ? 'bg-white text-ink shadow-sm' : 'text-ink-soft hover:text-ink'}`}
+                >
+                  Yearly
+                  {yearlyDiscount > 0 && (
+                    <span className="rounded-full bg-sage-100 px-1.5 py-0.5 text-[10px] font-semibold text-sage-700">
+                      Save {yearlyDiscount}%
+                    </span>
+                  )}
+                </button>
               </div>
-              <ul className="mt-5 space-y-2 text-sm text-ink-soft">
-                {['Unlimited floors per building', 'Real-time occupancy tracking', 'E-signature lease agreements', 'Tenant & expense management', 'Inquiry leads from public listings'].map(f => (
-                  <li key={f} className="flex items-center gap-2"><span className="size-1.5 rounded-full bg-sage-400" />{f}</li>
-                ))}
-              </ul>
-              <Link to="/get-started" className="mt-6 block">
-                <Button className="w-full justify-center">Get started</Button>
-              </Link>
-            </Card>
+
+              <Card padding="lg" className="mt-6 text-left">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="font-display text-3xl font-semibold text-ink">
+                      {formatCurrency(pricePerBuilding)}
+                      <span className="text-base font-normal text-ink-soft">/building/{billingCycle === 'monthly' ? 'mo' : 'yr'}</span>
+                    </p>
+                    <p className="mt-1 font-display text-lg text-ink-soft">
+                      {formatCurrency(pricePerUnit)}
+                      <span className="text-sm font-normal">/room/{billingCycle === 'monthly' ? 'mo' : 'yr'}</span>
+                    </p>
+                    {billingCycle === 'yearly' && pricing.monthlyPricePerBuilding > 0 && (
+                      <p className="mt-1 text-xs text-ink-faint line-through">
+                        {formatCurrency(pricing.monthlyPricePerBuilding * 12)}/building/yr if billed monthly
+                      </p>
+                    )}
+                  </div>
+                  <span className={`rounded-full px-3 py-1 text-xs font-semibold ${billingCycle === 'yearly' ? 'bg-sage-50 text-sage-700' : 'bg-crimson-50 text-crimson-600'}`}>
+                    {billingCycle === 'yearly' ? 'Best value' : 'Monthly'}
+                  </span>
+                </div>
+
+                <ul className="mt-6 space-y-2.5 text-sm text-ink-soft">
+                  {planFeatures.map(f => (
+                    <li key={f} className="flex items-center gap-2.5">
+                      <Check className="size-4 shrink-0 text-sage-500" />
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+
+                <Link to="/get-started" state={{ billingCycle }} className="mt-6 block">
+                  <Button className="w-full justify-center">Get started</Button>
+                </Link>
+                <p className="mt-3 text-center text-xs text-ink-faint">
+                  {billingCycle === 'yearly'
+                    ? 'Billed annually. Switch to monthly anytime.'
+                    : 'Billed monthly. Save by switching to annual.'}
+                </p>
+              </Card>
+            </>
           )}
         </div>
       </section>
