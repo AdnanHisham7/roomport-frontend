@@ -6,40 +6,42 @@ import type { ActivityLog } from '@/types/activity';
 interface SAPage<T> { data: T[]; total: number; page: number; limit: number; totalPages: number }
 
 export interface RegisterBuilderInput {
-  firstName:         string;
-  lastName:          string;
-  email:             string;
-  phone?:            string;
-  billingCycle:      'monthly' | 'yearly';
-  numberOfBuildings: number;
-  numberOfUnits:     number;
-  amount:            number;
-  notes?:            string;
+  firstName: string; lastName: string; email: string; phone?: string;
+  billingCycle: 'monthly' | 'yearly'; numberOfBuildings: number;
+  numberOfUnits: number; amount: number; notes?: string;
 }
 
 export interface UpgradeRequest {
-  _id:                   string;
-  userId:                { _id: string; first_name: string; last_name: string; email: string; phone_number?: string } | string;
-  subscriptionId?:       string;
-  additionalBuildings?:  number;
-  additionalUnits?:      number;
+  _id:                  string;
+  userId:               { _id: string; first_name: string; last_name: string; email: string; phone_number?: string } | string;
+  subscriptionId?:      string;
+  additionalBuildings?: number;
+  additionalUnits?:     number;
   additionalBuildingData?: Array<{ name: string; rooms: number }>;
-  message?:              string;
-  status:                'pending' | 'approved' | 'rejected' | 'cancelled';
-  adminNotes?:           string;
-  resolvedBy?:           string;
-  resolvedAt?:           string;
-  createdAt?:            string;
-  updatedAt?:            string;
+  message?:             string;
+  status:               'pending' | 'approved' | 'rejected' | 'cancelled';
+  adminNotes?:          string;
+  resolvedBy?:          string;
+  resolvedAt?:          string;
+  createdAt?:           string;
+  updatedAt?:           string;
 }
 
 export interface ResolveUpgradeRequestInput {
-  id:                 string;
-  status:             'approved' | 'rejected';
-  adminNotes?:        string;
-  numberOfBuildings?: number;
-  numberOfUnits?:     number;
-  amount?:            number;
+  id:                string;
+  status:            'approved' | 'rejected';
+  adminNotes?:       string;
+  newTotalBuildings?: number;
+  newTotalUnits?:    number;
+}
+
+export interface ResolveUpgradeRequestResponse {
+  message:        string;
+  deltaAmount?:   number;
+  deltaLabel?:    string;
+  newFullAmount?: number;
+  subscription?:  Subscription;
+  periods?:       SubscriptionPeriod[];
 }
 
 export const superAdminApi = baseApi.injectEndpoints({
@@ -49,7 +51,6 @@ export const superAdminApi = baseApi.injectEndpoints({
       providesTags: ['SuperAdminStats'],
     }),
 
-    // ── Builder Management ─────────────────────────────────────────────────────
     registerBuilder: builder.mutation<{ userId: string; message: string }, RegisterBuilderInput>({
       query: (body) => ({ url: '/super-admin/builders/register', method: 'POST', body }),
       invalidatesTags: ['SuperAdminBuilders', 'SuperAdminStats', 'Subscription'],
@@ -71,7 +72,6 @@ export const superAdminApi = baseApi.injectEndpoints({
       invalidatesTags: ['SuperAdminBuilders', 'SuperAdminStats'],
     }),
 
-    // ── Buildings ──────────────────────────────────────────────────────────────
     getSuperAdminBuildings: builder.query<SAPage<Building & { ownerName?: string }>, { search?: string; status?: string; isPublished?: boolean; isFeatured?: boolean; page?: number; limit?: number } | void>({
       query: (params) => ({ url: '/super-admin/buildings', params: params ?? undefined }),
       providesTags: ['SuperAdminBuildings'],
@@ -89,12 +89,10 @@ export const superAdminApi = baseApi.injectEndpoints({
       invalidatesTags: ['SuperAdminBuildings', 'SuperAdminStats'],
     }),
 
-    // ── Activity Logs ──────────────────────────────────────────────────────────
     getSuperAdminActivityLogs: builder.query<SAPage<ActivityLog>, { page?: number; limit?: number; action?: string } | void>({
       query: (params) => ({ url: '/super-admin/activity-logs', params: params ?? undefined }),
     }),
 
-    // ── Settings ───────────────────────────────────────────────────────────────
     getPlatformSettings: builder.query<{ data: PlatformSetting }, void>({
       query: () => '/super-admin/settings',
       providesTags: ['SuperAdminSettings'],
@@ -104,7 +102,6 @@ export const superAdminApi = baseApi.injectEndpoints({
       invalidatesTags: ['SuperAdminSettings'],
     }),
 
-    // ── Subscriptions ──────────────────────────────────────────────────────────
     getSuperAdminSubscriptions: builder.query<SAPage<Subscription & { ownerName?: string; periods?: SubscriptionPeriod[] }>, { userId?: string; status?: string; page?: number; limit?: number } | void>({
       query: (params) => ({ url: '/super-admin/subscriptions', params: params ?? undefined }),
       providesTags: ['Subscription'],
@@ -122,7 +119,6 @@ export const superAdminApi = baseApi.injectEndpoints({
       invalidatesTags: ['Subscription', 'SuperAdminStats'],
     }),
 
-    // ── Demo Requests ──────────────────────────────────────────────────────────
     getDemoRequests: builder.query<SAPage<DemoRequest>, { status?: string; page?: number; limit?: number } | void>({
       query: (params) => ({ url: '/subscriptions/admin/demo-requests', params: params ?? undefined }),
       providesTags: ['SuperAdminStats'],
@@ -132,12 +128,11 @@ export const superAdminApi = baseApi.injectEndpoints({
       invalidatesTags: ['SuperAdminStats'],
     }),
 
-    // ── Upgrade Requests ───────────────────────────────────────────────────────
     getUpgradeRequests: builder.query<SAPage<UpgradeRequest>, { status?: string; userId?: string; page?: number; limit?: number } | void>({
       query: (params) => ({ url: '/super-admin/upgrade-requests', params: params ?? undefined }),
       providesTags: ['UpgradeRequests'],
     }),
-    resolveUpgradeRequest: builder.mutation<{ message: string }, ResolveUpgradeRequestInput>({
+    resolveUpgradeRequest: builder.mutation<ResolveUpgradeRequestResponse, ResolveUpgradeRequestInput>({
       query: ({ id, ...body }) => ({ url: `/super-admin/upgrade-requests/${id}/resolve`, method: 'POST', body }),
       invalidatesTags: ['UpgradeRequests', 'Subscription', 'Notification'],
     }),
