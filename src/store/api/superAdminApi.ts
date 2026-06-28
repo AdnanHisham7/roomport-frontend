@@ -17,6 +17,31 @@ export interface RegisterBuilderInput {
   notes?:            string;
 }
 
+export interface UpgradeRequest {
+  _id:                   string;
+  userId:                { _id: string; first_name: string; last_name: string; email: string; phone_number?: string } | string;
+  subscriptionId?:       string;
+  additionalBuildings?:  number;
+  additionalUnits?:      number;
+  additionalBuildingData?: Array<{ name: string; rooms: number }>;
+  message?:              string;
+  status:                'pending' | 'approved' | 'rejected' | 'cancelled';
+  adminNotes?:           string;
+  resolvedBy?:           string;
+  resolvedAt?:           string;
+  createdAt?:            string;
+  updatedAt?:            string;
+}
+
+export interface ResolveUpgradeRequestInput {
+  id:                 string;
+  status:             'approved' | 'rejected';
+  adminNotes?:        string;
+  numberOfBuildings?: number;
+  numberOfUnits?:     number;
+  amount?:            number;
+}
+
 export const superAdminApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getPlatformStats: builder.query<{ data: PlatformStats }, void>({
@@ -106,6 +131,16 @@ export const superAdminApi = baseApi.injectEndpoints({
       query: ({ id, ...body }) => ({ url: `/subscriptions/admin/demo-requests/${id}`, method: 'PATCH', body }),
       invalidatesTags: ['SuperAdminStats'],
     }),
+
+    // ── Upgrade Requests ───────────────────────────────────────────────────────
+    getUpgradeRequests: builder.query<SAPage<UpgradeRequest>, { status?: string; userId?: string; page?: number; limit?: number } | void>({
+      query: (params) => ({ url: '/super-admin/upgrade-requests', params: params ?? undefined }),
+      providesTags: ['UpgradeRequests'],
+    }),
+    resolveUpgradeRequest: builder.mutation<{ message: string }, ResolveUpgradeRequestInput>({
+      query: ({ id, ...body }) => ({ url: `/super-admin/upgrade-requests/${id}/resolve`, method: 'POST', body }),
+      invalidatesTags: ['UpgradeRequests', 'Subscription', 'Notification'],
+    }),
   }),
 });
 
@@ -129,4 +164,6 @@ export const {
   useMarkPeriodPaidMutation,
   useGetDemoRequestsQuery,
   useUpdateDemoRequestMutation,
+  useGetUpgradeRequestsQuery,
+  useResolveUpgradeRequestMutation,
 } = superAdminApi;

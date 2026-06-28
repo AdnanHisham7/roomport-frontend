@@ -7,7 +7,7 @@ import { PublicLayout }      from '@/components/layout/PublicLayout';
 import { AuthLayout }        from '@/components/layout/AuthLayout';
 import { BuilderLayout }     from '@/components/layout/BuilderLayout';
 import { SuperAdminLayout }  from '@/components/layout/SuperAdminLayout';
-import ScrollToTop           from '@/components/ui/ScrollToTop';
+import ScrollToTop from './components/ui/ScrollToTop';
 
 // Public
 const LandingPage          = lazy(() => import('@/pages/public/LandingPage'));
@@ -50,6 +50,7 @@ const SASubscriptionsPage  = lazy(() => import('@/pages/superadmin/Subscriptions
 const SAActivityPage       = lazy(() => import('@/pages/superadmin/ActivityLogsPage'));
 const SASettingsPage       = lazy(() => import('@/pages/superadmin/SettingsPage'));
 const SADemoRequestsPage   = lazy(() => import('@/pages/superadmin/DemoRequestsPage'));
+const SAUpgradeRequestsPage = lazy(() => import('@/pages/superadmin/UpgradeRequestsPage'));
 
 const NotFoundPage         = lazy(() => import('@/pages/NotFoundPage'));
 
@@ -76,8 +77,11 @@ function App() {
           <Route path="/setup"           element={<SetupPage />} />
         </Route>
 
-        {/* Subscription expired wall — no sidebar, billing accessible */}
-        <Route path="/subscription-expired" element={<RoleRoute roles={['admin', 'manager']}><SubscriptionExpiredPage /></RoleRoute>} />
+        {/* Subscription expired wall — no sidebar, billing still accessible */}
+        <Route
+          path="/subscription-expired"
+          element={<RoleRoute roles={['admin', 'manager']}><SubscriptionExpiredPage /></RoleRoute>}
+        />
 
         <Route
           path="/dashboard"
@@ -105,15 +109,19 @@ function App() {
           <Route path="profile"        element={<ProfilePage />} />
         </Route>
 
-        <Route path="/super-admin" element={<RoleRoute roles={['super_admin']}><SuperAdminLayout /></RoleRoute>}>
-          <Route index                 element={<SuperDashboardPage />} />
-          <Route path="builders"       element={<BuildersPage />} />
-          <Route path="builders/:id"   element={<BuilderDetailPage />} />
-          <Route path="buildings"      element={<SAModerationPage />} />
-          <Route path="subscriptions"  element={<SASubscriptionsPage />} />
-          <Route path="activity"       element={<SAActivityPage />} />
-          <Route path="settings"       element={<SASettingsPage />} />
-          <Route path="demo-requests"  element={<SADemoRequestsPage />} />
+        <Route
+          path="/super-admin"
+          element={<RoleRoute roles={['super_admin']}><SuperAdminLayout /></RoleRoute>}
+        >
+          <Route index                      element={<SuperDashboardPage />} />
+          <Route path="builders"            element={<BuildersPage />} />
+          <Route path="builders/:id"        element={<BuilderDetailPage />} />
+          <Route path="buildings"           element={<SAModerationPage />} />
+          <Route path="subscriptions"       element={<SASubscriptionsPage />} />
+          <Route path="upgrade-requests"    element={<SAUpgradeRequestsPage />} />
+          <Route path="activity"            element={<SAActivityPage />} />
+          <Route path="settings"            element={<SASettingsPage />} />
+          <Route path="demo-requests"       element={<SADemoRequestsPage />} />
         </Route>
 
         <Route path="*" element={<NotFoundPage />} />

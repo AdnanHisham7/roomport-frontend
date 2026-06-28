@@ -1,23 +1,25 @@
 export type NotificationType =
   | 'rent_reminder' | 'payment_recieved' | 'payment_overdue' | 'lease_expiry'
   | 'maintenance_update' | 'maintenance_assigned' | 'document_expiory' | 'general'
-  | 'upgrade_request';
+  | 'upgrade_request' | 'upgrade_request_resolved' | 'demo_request' | 'payment_confirmed'
+  | 'subscription_updated';
 
 export type NotificationChannel = 'in_app' | 'sms' | 'whatsapp' | 'email';
 
 export interface AppNotification {
-  _id: string;
-  userId: string;
-  title: string;
-  message: string;
+  _id:              string;
+  userId:           string;
+  title:            string;
+  message:          string;
   notificationType: NotificationType;
-  channel: NotificationChannel;
-  isRead: boolean;
-  buildingId?: string;
-  tenantId?: string;
-  readAt?: string;
-  createdAt?: string;
-  updatedAt?: string;
+  channel:          NotificationChannel;
+  isRead:           boolean;
+  buildingId?:      string;
+  tenantId?:        string;
+  readAt?:          string;
+  metadata?:        Record<string, string>;
+  createdAt?:       string;
+  updatedAt?:       string;
 }
 
 export type ActivityLogAction =
@@ -46,17 +48,17 @@ export interface ActivityLogUser {
 }
 
 export interface ActivityLog {
-  _id:         string;
-  action:      ActivityLogAction;
-  entityType?: ActivityLogEntityType;
-  buildingId?: string;
-  entityId?:   string;
-  unitId?:     string;
-  metadata?:   Record<string, unknown>;
-  userId:      string;
-  user?:       ActivityLogUser;
+  _id:          string;
+  action:       ActivityLogAction;
+  entityType?:  ActivityLogEntityType;
+  buildingId?:  string;
+  entityId?:    string;
+  unitId?:      string;
+  metadata?:    Record<string, unknown>;
+  userId:       string;
+  user?:        ActivityLogUser;
   description?: string;
-  ipAddress?:  string;
-  createdAt?:  string;
-  updatedAt?:  string;
+  ipAddress?:   string;
+  createdAt?:   string;
+  updatedAt?:   string;
 }

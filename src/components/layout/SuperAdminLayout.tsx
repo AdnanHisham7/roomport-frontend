@@ -7,13 +7,14 @@ import { useAppSelector } from '@/store/hooks';
 import { cn } from '@/utils/cn';
 
 const titleMap: Record<string, string> = {
-  '/super-admin':                'Platform Overview',
-  '/super-admin/builders':       'Builders',
-  '/super-admin/buildings':      'Buildings',
-  '/super-admin/subscriptions':  'Subscriptions',
-  '/super-admin/demo-requests':  'Demo Requests',
-  '/super-admin/activity':       'Activity Log',
-  '/super-admin/settings':       'Platform Settings',
+  '/super-admin':                        'Platform Overview',
+  '/super-admin/builders':               'Builders',
+  '/super-admin/buildings':              'Buildings',
+  '/super-admin/subscriptions':          'Subscriptions',
+  '/super-admin/upgrade-requests':       'Upgrade Requests',
+  '/super-admin/demo-requests':          'Demo Requests',
+  '/super-admin/activity':               'Activity Log',
+  '/super-admin/settings':               'Platform Settings',
 };
 
 export function SuperAdminLayout() {
@@ -21,7 +22,6 @@ export function SuperAdminLayout() {
   const collapsed = useAppSelector((s) => s.ui.sidebarCollapsed);
   const location  = useLocation();
 
-  // Match exact or prefix (e.g. /super-admin/builders/123 → 'Builders')
   const title =
     titleMap[location.pathname] ??
     Object.entries(titleMap)
