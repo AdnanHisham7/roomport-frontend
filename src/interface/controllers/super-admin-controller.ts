@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
 import { SuperAdminUseCases } from '../../application/usecase/super-admin/super-admin-usecase';
 import { SubscriptionUseCases } from '../../application/usecase/subscription/subscription-usecase';
-import { AppError } from '../../shared/error/app-error';
+import { AppError, BadRequestError } from '../../shared/error/app-error';
 
 export class SuperAdminController {
   constructor(
@@ -156,12 +156,33 @@ export class SuperAdminController {
     } catch (error) { return this.handleError(res, error, 'Failed to fetch upgrade requests.'); }
   };
 
+  /**
+   * Resolve an upgrade request.
+   *
+   * Body:
+   *   status            — "approved" | "rejected"
+   *   adminNotes        — optional string shown to builder
+   *   newTotalBuildings — REQUIRED on approve: the new total building count
+   *   newTotalUnits     — REQUIRED on approve: the new total unit count
+   *
+   * Amount is auto-computed from platform pricing config.
+   * No manual amount field accepted.
+   */
   resolveUpgradeRequest = async (req: Request<{ id: string }>, res: Response): Promise<Response> => {
     try {
-      const { status, adminNotes, numberOfBuildings, numberOfUnits, amount } = req.body;
+      const { status, adminNotes, newTotalBuildings, newTotalUnits } = req.body;
 
       if (!status || !['approved', 'rejected'].includes(status)) {
         return res.status(422).json({ message: 'status must be "approved" or "rejected".' });
+      }
+
+      if (status === 'approved') {
+        if (newTotalBuildings == null || isNaN(Number(newTotalBuildings)) || Number(newTotalBuildings) < 1) {
+          return res.status(422).json({ message: 'newTotalBuildings is required and must be at least 1 when approving.' });
+        }
+        if (newTotalUnits == null || isNaN(Number(newTotalUnits)) || Number(newTotalUnits) < 1) {
+          return res.status(422).json({ message: 'newTotalUnits is required and must be at least 1 when approving.' });
+        }
       }
 
       const result = await this.subscriptionUc.resolveUpgradeRequest(
@@ -170,11 +191,11 @@ export class SuperAdminController {
         {
           status,
           adminNotes,
-          numberOfBuildings: numberOfBuildings != null ? Number(numberOfBuildings) : undefined,
-          numberOfUnits:     numberOfUnits != null ? Number(numberOfUnits) : undefined,
-          amount:            amount != null ? Number(amount) : undefined,
+          newTotalBuildings: status === 'approved' ? Number(newTotalBuildings) : 0,
+          newTotalUnits:     status === 'approved' ? Number(newTotalUnits)     : 0,
         }
       );
+
       return res.status(200).json(result);
     } catch (error) { return this.handleError(res, error, 'Failed to resolve upgrade request.'); }
   };
