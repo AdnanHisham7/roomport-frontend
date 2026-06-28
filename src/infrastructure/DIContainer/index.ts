@@ -56,7 +56,7 @@ import { SubscriptionController } from '../../interface/controllers/subscription
 import { PaymentRecordRepository } from '../repository/payment-record-repository';
 import { PaymentRecordController } from '../../interface/controllers/payment-record-controller';
 
-// Repositories
+// ── Repositories ──────────────────────────────────────────────────────────────
 const userRepository            = new UserRepository();
 const tenantRepository          = new TenantRepository();
 const documentRepository        = new DocumentRepository();
@@ -73,14 +73,14 @@ const inquiryRepository         = new InquiryRepository();
 const platformSettingRepository = new PlatformSettingRepository();
 const paymentRecordRepository   = new PaymentRecordRepository();
 
-// Services
+// ── Services ──────────────────────────────────────────────────────────────────
 const jwtService       = new JwtService();
 const emailService     = new EmailService();
 const otpService       = new RedisOtpService();
 const pdfService       = new PdfService();
 const twilioSmsService = new TwilioSmsService();
 
-// Use Cases
+// ── Use Cases ─────────────────────────────────────────────────────────────────
 const activityLogUseCase  = new ActivityLogUsecaseImpl(activityLogRepository);
 const userUseCase         = new UserUseCase(userRepository);
 const authUseCases        = new AuthUseCases(userRepository, jwtService, emailService, otpService);
@@ -105,14 +105,16 @@ class TenantPaymentAdapter {
     const tenants = await this.tenantRepo.findAll(filter as any);
     const today = new Date();
     return tenants.map(t => {
-      const hasPaidThisMonth = t.paidAt && (t.paidAt as Date).getMonth() === today.getMonth() && (t.paidAt as Date).getFullYear() === today.getFullYear();
+      const hasPaidThisMonth = t.paidAt &&
+        (t.paidAt as Date).getMonth() === today.getMonth() &&
+        (t.paidAt as Date).getFullYear() === today.getFullYear();
       return { amount: t.rentAmount, status: hasPaidThisMonth ? 'completed' : 'pending', type: 'rent', paidAt: t.paidAt };
     });
   }
 }
 const expenseUseCases = new ExpenseUseCases(expenseRepo, new TenantPaymentAdapter(tenantRepository) as any);
 
-// Controllers
+// ── Controllers ───────────────────────────────────────────────────────────────
 export const authController          = new AuthController(authUseCases, registerUseCase);
 export const bootstrapController     = new BootstrapController(bootstrapUseCase);
 export const tenantController        = new TenantController(tenantUseCases);
@@ -126,7 +128,8 @@ export const activityLogController   = new ActivityLogController(activityLogUseC
 export const buildingController      = new BuildingController(buildingUseCases, userRepository);
 export const floorController         = new FloorController(floorUseCases);
 export const expenseController       = new ExpenseController(expenseUseCases, buildingRepository);
-export const superAdminController    = new SuperAdminController(superAdminUseCases);
+// SuperAdminController now receives subscriptionUseCases for upgrade request handling
+export const superAdminController    = new SuperAdminController(superAdminUseCases, subscriptionUseCases);
 export const inquiryController       = new InquiryController(inquiryUseCases);
 export const publicController        = new PublicController(publicUseCases);
 export const uploadController        = new UploadController();

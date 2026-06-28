@@ -1,9 +1,13 @@
 import type { Request, Response } from 'express';
 import { SuperAdminUseCases } from '../../application/usecase/super-admin/super-admin-usecase';
+import { SubscriptionUseCases } from '../../application/usecase/subscription/subscription-usecase';
 import { AppError } from '../../shared/error/app-error';
 
 export class SuperAdminController {
-  constructor(private readonly uc: SuperAdminUseCases) {}
+  constructor(
+    private readonly uc: SuperAdminUseCases,
+    private readonly subscriptionUc: SubscriptionUseCases,
+  ) {}
 
   private handleError(res: Response, error: unknown, fallback: string): Response {
     if (error instanceof AppError) {
@@ -141,5 +145,37 @@ export class SuperAdminController {
       const data = await this.uc.updateSubscription(req.params.id, req.body, req.user!.userId);
       return res.status(200).json({ message: 'Subscription updated.', data });
     } catch (error) { return this.handleError(res, error, 'Failed to update subscription.'); }
+  };
+
+  listUpgradeRequests = async (req: Request, res: Response): Promise<Response> => {
+    try {
+      const { page, limit } = this.pagination(req);
+      const { status, userId } = req.query as Record<string, string>;
+      const result = await this.subscriptionUc.listUpgradeRequests({ status, userId }, page, limit);
+      return res.status(200).json(result);
+    } catch (error) { return this.handleError(res, error, 'Failed to fetch upgrade requests.'); }
+  };
+
+  resolveUpgradeRequest = async (req: Request<{ id: string }>, res: Response): Promise<Response> => {
+    try {
+      const { status, adminNotes, numberOfBuildings, numberOfUnits, amount } = req.body;
+
+      if (!status || !['approved', 'rejected'].includes(status)) {
+        return res.status(422).json({ message: 'status must be "approved" or "rejected".' });
+      }
+
+      const result = await this.subscriptionUc.resolveUpgradeRequest(
+        req.params.id,
+        req.user!.userId,
+        {
+          status,
+          adminNotes,
+          numberOfBuildings: numberOfBuildings != null ? Number(numberOfBuildings) : undefined,
+          numberOfUnits:     numberOfUnits != null ? Number(numberOfUnits) : undefined,
+          amount:            amount != null ? Number(amount) : undefined,
+        }
+      );
+      return res.status(200).json(result);
+    } catch (error) { return this.handleError(res, error, 'Failed to resolve upgrade request.'); }
   };
 }

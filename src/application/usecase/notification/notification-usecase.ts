@@ -13,65 +13,67 @@ export class NotificationUseCase implements INotificationUseCase {
     private userRepository: IUserRepository
   ) {}
 
-  async getUserNotifications(userId: string): Promise<Notification[]> {
-    return this.notificationRepository.findByUserId(userId);
+  async getUserNotifications(userId: string, role?: string): Promise<Notification[]> {
+    return this.notificationRepository.findByUserId(userId, role);
   }
 
-  async getUnreadCount(userId: string): Promise<number> {
-    return this.notificationRepository.countUnread(userId);
+  async getUnreadCount(userId: string, role?: string): Promise<number> {
+    return this.notificationRepository.countUnread(userId, role);
   }
 
   async markAsRead(notificationId: string): Promise<Notification | null> {
     return this.notificationRepository.markAsRead(notificationId);
   }
 
-  async markAllAsRead(userId: string): Promise<void> {
-    await this.notificationRepository.markAllAsRead(userId);
+  async markAllAsRead(userId: string, role?: string): Promise<void> {
+    await this.notificationRepository.markAllAsRead(userId, role);
   }
 
   async sendNotification(data: SendMultiChannelNotificationDTO): Promise<void> {
-    const { 
-      userId, 
-      title, 
-      message, 
-      notificationType = NotificationType.GENERAL, 
+    const {
+      userId,
+      title,
+      message,
+      notificationType = NotificationType.GENERAL,
       channel = NotificationChannel.IN_APP,
       buildingId,
-      tenantId
+      tenantId,
     } = data as any;
 
     const promises: Promise<any>[] = [];
 
-    // Always create a system notification since it represents the history
-    promises.push(this.notificationRepository.create({ 
-      userId, 
-      title, 
-      message, 
-      notificationType, 
-      channel,
-      buildingId,
-      tenantId
-    }));
+    promises.push(
+      this.notificationRepository.create({
+        userId,
+        title,
+        message,
+        notificationType,
+        channel,
+        buildingId,
+        tenantId,
+      })
+    );
 
-    // Trigger external channels if requested
-    if (channel === NotificationChannel.EMAIL || channel === NotificationChannel.SMS || channel === NotificationChannel.WHATSAPP) {
+    if (
+      channel === NotificationChannel.EMAIL ||
+      channel === NotificationChannel.SMS ||
+      channel === NotificationChannel.WHATSAPP
+    ) {
       const user = await this.userRepository.findById(userId);
       if (user) {
         if (channel === NotificationChannel.EMAIL && user.email && this.emailService.sendNotificationEmail) {
-          promises.push(this.emailService.sendNotificationEmail(user.email, title, message).catch(err => {
-            console.error('Failed to send email notification:', err);
-          }));
+          promises.push(
+            this.emailService.sendNotificationEmail(user.email, title, message).catch(err => {
+              console.error('Failed to send email notification:', err);
+            })
+          );
         }
-
         if (channel === NotificationChannel.SMS && user.phone_number) {
-          promises.push(this.smsService.sendSms(user.phone_number, `[${title}]: ${message}`).catch(err => {
-            console.error('Failed to send SMS notification:', err);
-          }));
-        }
-
-        // WhatsApp integration could be added here in the future.
-        if (channel === NotificationChannel.WHATSAPP) {
-          console.warn('WhatsApp channel is not yet implemented.');
+          promises.push(
+            this.smsService.sendSms(user.phone_number, `[${title}]: ${message}`).catch(err => {
+              console.error('Failed to send SMS notification:', err);
+            })
+          );
         }
       }
     }

@@ -10,25 +10,33 @@ export const createSuperAdminRouter = (controller: SuperAdminController): Router
 
   router.get('/stats', controller.getStats);
 
-  // Builder management - manual registration flow
-  router.post('/builders/register', controller.registerBuilder);
-  router.get('/builders', controller.listBuilders);
-  router.get('/builders/:id', controller.getBuilderDetail);
-  router.patch('/builders/:id/status', controller.updateBuilderStatus);
-  router.delete('/builders/:id', controller.deleteBuilder);
+  // Builder management
+  router.post('/builders/register',     controller.registerBuilder);
+  router.get('/builders',               controller.listBuilders);
+  router.get('/builders/:id',           controller.getBuilderDetail);
+  router.patch('/builders/:id/status',  controller.updateBuilderStatus);
+  router.delete('/builders/:id',        controller.deleteBuilder);
 
-  router.get('/buildings', controller.listBuildings);
+  // Buildings
+  router.get('/buildings',               controller.listBuildings);
   router.patch('/buildings/:id/feature', controller.toggleFeature);
   router.patch('/buildings/:id/publish', controller.togglePublish);
-  router.delete('/buildings/:id', controller.deleteBuilding);
+  router.delete('/buildings/:id',        controller.deleteBuilding);
 
+  // Activity logs
   router.get('/activity-logs', controller.listActivityLogs);
 
+  // Settings
   router.get('/settings', controller.getSettings);
-  router.put('/settings', controller.updateSettings);
+  router.put('/settings',  controller.updateSettings);
 
-  router.get('/subscriptions', controller.listSubscriptions);
+  // Subscriptions
+  router.get('/subscriptions',      controller.listSubscriptions);
   router.patch('/subscriptions/:id', controller.updateSubscription);
+
+  // Upgrade requests
+  router.get('/upgrade-requests',              controller.listUpgradeRequests);
+  router.post('/upgrade-requests/:id/resolve', controller.resolveUpgradeRequest);
 
   return router;
 };
