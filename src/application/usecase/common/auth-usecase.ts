@@ -7,7 +7,7 @@ import { IOtpService } from '../../interface/common/otp-servie-usecase.impl';
 import { ForgotPasswordRequestDTO, LoginRequestDTO, LoginResponseDTO, RefreshTokenRequestDTO, RefreshTokenResponseDTO, ResendOtpRequestDTO, ResetPasswordRequestDTO, SendOtpRequestDTO, ValidateOtpRequestDTO, VerifyEmailRequestDTO } from '../../dtos/user-usecaase/authdto';
 import { BadRequestError, ForbiddenError, NotFoundError, UnauthorizedError } from '../../../shared/error/app-error';
 import { OtpPurpose } from '../../../shared/enums/OtpPurpose.enum';
-
+import { SubscriptionUseCases } from '../subscription/subscription-usecase';
 
 const SALT_ROUNDS = 12;
 
@@ -17,13 +17,13 @@ function generateOtp(): string {
 
 export class AuthUseCases implements IAuthUseCases {
   constructor(
-    private readonly userRepository: IUserRepository,
-    private readonly jwtService:     IJwtService,
-    private readonly emailService:   IEmailService,
-    private readonly otpService:     IOtpService,
+    private readonly userRepository:      IUserRepository,
+    private readonly jwtService:          IJwtService,
+    private readonly emailService:        IEmailService,
+    private readonly otpService:          IOtpService,
+    private readonly subscriptionUseCase: SubscriptionUseCases,
   ) {}
 
-  // ─── LOGIN ─────────────────────────────────────────────────────────────────
   async login(data: LoginRequestDTO): Promise<LoginResponseDTO> {
     const user = await this.userRepository.findByEmail(data.email);
 
@@ -42,7 +42,6 @@ export class AuthUseCases implements IAuthUseCases {
       );
     }
 
-    // Block non-active statuses
     if (user.status === 'pending_verification') {
       throw new ForbiddenError(
         'Email not verified.',
@@ -64,6 +63,10 @@ export class AuthUseCases implements IAuthUseCases {
     await this.userRepository.updateRefreshToken(user._id!, hashedRefresh);
     await this.userRepository.updateLastLogin(user._id!);
 
+    if (user.role === 'admin' || user.role === 'manager') {
+      this.subscriptionUseCase.renewExpiredPeriodIfNeeded(user._id!).catch(console.error);
+    }
+
     return {
       accessToken,
       refreshToken,
@@ -81,7 +84,6 @@ export class AuthUseCases implements IAuthUseCases {
     };
   }
 
-  // ─── LOGOUT ────────────────────────────────────────────────────────────────
   async logout(userId: string): Promise<void> {
     const user = await this.userRepository.findById(userId);
     if (!user) {
@@ -93,7 +95,6 @@ export class AuthUseCases implements IAuthUseCases {
     await this.userRepository.updateRefreshToken(userId, null);
   }
 
-  // ─── REFRESH TOKEN ──────────────────────────────────────────────────────────
   async refreshToken(data: RefreshTokenRequestDTO): Promise<RefreshTokenResponseDTO> {
     let payload;
     try {
@@ -133,7 +134,6 @@ export class AuthUseCases implements IAuthUseCases {
     return { accessToken: newAccessToken, refreshToken: newRefreshToken };
   }
 
-  // ─── SEND OTP (Redis) ────────────────────────────────────────────────────────
   async sendOtp(data: SendOtpRequestDTO): Promise<void> {
     const user = await this.userRepository.findByEmail(data.email);
 
@@ -156,12 +156,10 @@ export class AuthUseCases implements IAuthUseCases {
     await this.emailService.sendOtpEmail(data.email, otp, data.purpose);
   }
 
-  // ─── RESEND OTP ─────────────────────────────────────────────────────────────
   async resendOtp(data: ResendOtpRequestDTO): Promise<void> {
     await this.sendOtp({ email: data.email, purpose: data.purpose });
   }
 
-  // ─── VALIDATE OTP (Redis) ────────────────────────────────────────────────────
   async validateOtp(data: ValidateOtpRequestDTO): Promise<{ resetToken: string }> {
     const user = await this.userRepository.findByEmail(data.email);
     if (!user) {
@@ -201,7 +199,6 @@ export class AuthUseCases implements IAuthUseCases {
     return { resetToken };
   }
 
-  // ─── VERIFY EMAIL (Redis) ────────────────────────────────────────────────────
   async verifyEmail(data: VerifyEmailRequestDTO): Promise<void> {
     const user = await this.userRepository.findByEmail(data.email);
     if (!user) {
@@ -241,17 +238,15 @@ export class AuthUseCases implements IAuthUseCases {
     await this.userRepository.updateEmailVerified(user._id!);
   }
 
-  // ─── FORGOT PASSWORD ─────────────────────────────────────────────────────────
   async forgotPassword(data: ForgotPasswordRequestDTO): Promise<void> {
     const user = await this.userRepository.findByEmail(data.email);
-    if (!user) return; // silent — prevent email enumeration
+    if (!user) return;
 
     const otp = generateOtp();
     await this.otpService.saveOtp(data.email, OtpPurpose.FORGOT_PASSWORD, otp);
     await this.emailService.sendOtpEmail(data.email, otp, OtpPurpose.FORGOT_PASSWORD);
   }
 
-  // ─── RESET PASSWORD ──────────────────────────────────────────────────────────
   async resetPassword(data: ResetPasswordRequestDTO): Promise<void> {
     const user = await this.userRepository.findByEmail(data.email);
     if (!user) {
@@ -284,6 +279,6 @@ export class AuthUseCases implements IAuthUseCases {
 
     const hashedPassword = await bcrypt.hash(data.newPassword, SALT_ROUNDS);
     await this.userRepository.updatePassword(data.email, hashedPassword);
-    await this.userRepository.updateRefreshToken(user._id!, null); // invalidate sessions
+    await this.userRepository.updateRefreshToken(user._id!, null);
   }
 }

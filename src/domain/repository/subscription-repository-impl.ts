@@ -15,11 +15,12 @@ export interface ISubscriptionRepository {
   countAll(filter?: SubscriptionListFilter): Promise<number>;
   getRevenueTotal(): Promise<number>;
 
-  // Period management
   createPeriod(data: Omit<ISubscriptionPeriod, '_id' | 'createdAt' | 'updatedAt'>): Promise<ISubscriptionPeriod>;
   findPeriodsBySubscriptionId(subscriptionId: string): Promise<ISubscriptionPeriod[]>;
   findPeriodById(periodId: string): Promise<ISubscriptionPeriod | null>;
   updatePeriod(periodId: string, data: Partial<ISubscriptionPeriod>): Promise<ISubscriptionPeriod | null>;
   findAllPeriodsPaginated(filter: { userId?: string; subscriptionId?: string; status?: string }, skip: number, limit: number): Promise<{ data: ISubscriptionPeriod[]; total: number }>;
   getAdminRevenue(): Promise<number>;
+
+  findOverlappingPendingPeriod(subscriptionId: string, periodStart: Date, periodEnd: Date): Promise<ISubscriptionPeriod | null>;
 }

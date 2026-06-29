@@ -19,10 +19,6 @@ import { NotificationModel } from '../../../infrastructure/db/model/notification
 import { UpgradeRequestModel, IUpgradeRequest } from '../../../infrastructure/db/model/upgrade-request-model';
 import type { IEmailService } from '../../interface/common/email-service-usecase.impl';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Helpers
-// ─────────────────────────────────────────────────────────────────────────────
-
 function toResponse(s: ISubscription): SubscriptionResponseDTO {
   return {
     _id:                s._id!.toString(),
@@ -74,9 +70,6 @@ function buildPeriodDates(start: Date, cycle: BillingCycle): { end: Date; label:
   }
 }
 
-/**
- * Computes the full-period amount for a subscription based on pricing config.
- */
 function computeFullAmount(
   buildings: number,
   units: number,
@@ -89,11 +82,6 @@ function computeFullAmount(
   return buildings * pricing.yearlyPricePerBuilding + units * pricing.yearlyPricePerUnit;
 }
 
-/**
- * Pro-rates amount for a partial period.
- * Pro-ration = full_cycle_amount × (remaining_days / total_days_in_cycle)
- * Result rounded to nearest rupee.
- */
 function computeProRatedAmount(
   buildings: number,
   units: number,
@@ -112,10 +100,6 @@ function computeProRatedAmount(
   return Math.round(fullAmount * (remainingDays / totalDaysInCycle));
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Use Case
-// ─────────────────────────────────────────────────────────────────────────────
-
 export class SubscriptionUseCases {
   constructor(
     private readonly subscriptionRepo: ISubscriptionRepository,
@@ -124,8 +108,6 @@ export class SubscriptionUseCases {
     private readonly activityLogUc: IActivityLogUsecase,
     private readonly emailService: IEmailService,
   ) {}
-
-  // ── Public pricing ──────────────────────────────────────────────────────────
 
   async getPricing(): Promise<{
     monthlyPricePerBuilding: number; monthlyPricePerUnit: number;
@@ -145,8 +127,6 @@ export class SubscriptionUseCases {
     };
   }
 
-  // ── Create builder subscription ─────────────────────────────────────────────
-
   async createBuilderSubscription(
     data: CreateBuilderSubscriptionDTO,
     adminUserId: string
@@ -156,6 +136,14 @@ export class SubscriptionUseCases {
 
     const user = await this.userRepo.findById(data.userId);
     if (!user) throw new NotFoundError('Builder not found.');
+
+    const existingSub = await this.subscriptionRepo.findByUserId(data.userId);
+    if (existingSub) {
+      throw new BadRequestError(
+        'A subscription already exists for this builder.',
+        'Use the admin update endpoint to modify the existing subscription.'
+      );
+    }
 
     const periodStart = new Date();
     const { end: periodEnd, label: periodLabel } = buildPeriodDates(periodStart, data.billingCycle);
@@ -194,8 +182,6 @@ export class SubscriptionUseCases {
 
     return { subscription: toResponse(sub), firstPeriod: toPeriodResponse(firstPeriod) };
   }
-
-  // ── Builder reads ───────────────────────────────────────────────────────────
 
   async getMine(userId: string): Promise<SubscriptionResponseDTO | null> {
     const sub = await this.subscriptionRepo.findByUserId(userId);
@@ -238,33 +224,57 @@ export class SubscriptionUseCases {
     return { data: data.map(toPeriodResponse), total, page, limit };
   }
 
-  // ── Admin: mark period paid ─────────────────────────────────────────────────
+  /**
+   * Called at login for builder/admin roles.
+   * Checks if the most recent paid period has ended and no pending period exists
+   * for the next cycle window. If so, creates one automatically.
+   * This is idempotent — safe to call every login.
+   */
+  async renewExpiredPeriodIfNeeded(userId: string): Promise<void> {
+    try {
+      const sub = await this.subscriptionRepo.findByUserId(userId);
+      if (!sub || sub.status !== 'active') return;
 
-  async markPeriodPaid(periodId: string, adminUserId: string, data: MarkPeriodPaidDTO): Promise<SubscriptionPeriodResponseDTO> {
-    const period = await this.subscriptionRepo.findPeriodById(periodId);
-    if (!period) throw new NotFoundError('Subscription period not found.');
+      const now = new Date();
+      const periods = await this.subscriptionRepo.findPeriodsBySubscriptionId(sub._id!.toString());
 
-    const updated = await this.subscriptionRepo.updatePeriod(periodId, {
-      status: 'paid',
-      paidAt: data.paidAt ?? new Date(),
-      paidBy: adminUserId,
-      notes:  data.notes,
-    });
+      const currentActivePaid = periods.find(p =>
+        p.status === 'paid' &&
+        new Date(p.periodStart) <= now &&
+        new Date(p.periodEnd) >= now
+      );
 
-    const sub = await this.subscriptionRepo.findById(period.subscriptionId.toString());
-    if (sub) {
-      const nextStart = new Date(updated!.periodEnd);
+      if (currentActivePaid) return;
+
+      const latestPaidPeriod = periods
+        .filter(p => p.status === 'paid')
+        .sort((a, b) => new Date(b.periodEnd).getTime() - new Date(a.periodEnd).getTime())[0];
+
+      if (!latestPaidPeriod) return;
+
+      const lastPaidEnd = new Date(latestPaidPeriod.periodEnd);
+      if (lastPaidEnd > now) return;
+
+      const nextStart = new Date(lastPaidEnd);
       const { end: nextEnd, label: nextLabel } = buildPeriodDates(nextStart, sub.billingCycle);
-      const pricing = await this.settingRepo.get();
-      const nextAmount = computeFullAmount(sub.numberOfBuildings, sub.numberOfUnits, sub.billingCycle, pricing as any);
 
-      await this.subscriptionRepo.update(sub._id!.toString(), {
-        currentPeriodStart: nextStart,
-        currentPeriodEnd:   nextEnd,
-        dueDate:            nextEnd,
-        status:             'active',
-        paidAt:             updated!.paidAt,
-      });
+      const existingPending = await this.subscriptionRepo.findOverlappingPendingPeriod(
+        sub._id!.toString(),
+        nextStart,
+        nextEnd
+      );
+
+      if (existingPending) return;
+
+      const pricing = await this.settingRepo.get();
+      const pricingConfig = {
+        monthlyPricePerBuilding: pricing.monthlyPricePerBuilding ?? pricing.pricePerBuilding,
+        monthlyPricePerUnit:     pricing.monthlyPricePerUnit     ?? pricing.pricePerUnit,
+        yearlyPricePerBuilding:  pricing.yearlyPricePerBuilding  ?? pricing.pricePerBuilding * 10,
+        yearlyPricePerUnit:      pricing.yearlyPricePerUnit      ?? pricing.pricePerUnit * 10,
+      };
+
+      const nextAmount = computeFullAmount(sub.numberOfBuildings, sub.numberOfUnits, sub.billingCycle, pricingConfig);
 
       await this.subscriptionRepo.createPeriod({
         subscriptionId: sub._id!,
@@ -276,14 +286,87 @@ export class SubscriptionUseCases {
         status:         'pending',
       });
 
+      await this.subscriptionRepo.update(sub._id!.toString(), {
+        currentPeriodStart: nextStart,
+        currentPeriodEnd:   nextEnd,
+        dueDate:            nextEnd,
+      });
+
+      NotificationModel.create({
+        userId:           sub.userId,
+        title:            'New Billing Period',
+        message:          `A new billing period \"${nextLabel}\" (₹${nextAmount}) has been created. Please arrange payment to maintain access.`,
+        notificationType: 'general',
+        channel:          'in_app',
+        type:             'payment_pending',
+        metadata:         { periodLabel: nextLabel, amount: String(nextAmount) },
+      }).catch(console.error);
+    } catch (err) {
+      console.error('[renewExpiredPeriodIfNeeded] Non-fatal error:', err);
+    }
+  }
+
+  async markPeriodPaid(periodId: string, adminUserId: string, data: MarkPeriodPaidDTO): Promise<SubscriptionPeriodResponseDTO> {
+    const period = await this.subscriptionRepo.findPeriodById(periodId);
+    if (!period) throw new NotFoundError('Subscription period not found.');
+
+    if (period.status === 'paid') {
+      throw new BadRequestError('This period is already marked as paid.');
+    }
+
+    const updated = await this.subscriptionRepo.updatePeriod(periodId, {
+      status: 'paid',
+      paidAt: data.paidAt ?? new Date(),
+      paidBy: adminUserId,
+      notes:  data.notes,
+    });
+
+    const sub = await this.subscriptionRepo.findById(period.subscriptionId.toString());
+    if (sub) {
+      // const nextStart = new Date(updated!.periodEnd);
+      // const { end: nextEnd, label: nextLabel } = buildPeriodDates(nextStart, sub.billingCycle);
+
+      // const existingNext = await this.subscriptionRepo.findOverlappingPendingPeriod(
+      //   sub._id!.toString(),
+      //   nextStart,
+      //   nextEnd
+      // );
+
+      // await this.subscriptionRepo.update(sub._id!.toString(), {
+      //   currentPeriodStart: nextStart,
+      //   currentPeriodEnd:   nextEnd,
+      //   dueDate:            nextEnd,
+      //   status:             'active',
+      //   paidAt:             updated!.paidAt,
+      // });
+
+      // let nextPeriodLabel = nextLabel;
+
+      // if (!existingNext) {
+      //   const pricing = await this.settingRepo.get();
+      //   const nextAmount = computeFullAmount(sub.numberOfBuildings, sub.numberOfUnits, sub.billingCycle, pricing as any);
+
+      //   await this.subscriptionRepo.createPeriod({
+      //     subscriptionId: sub._id!,
+      //     userId:         sub.userId,
+      //     periodStart:    nextStart,
+      //     periodEnd:      nextEnd,
+      //     periodLabel:    nextLabel,
+      //     amount:         nextAmount,
+      //     status:         'pending',
+      //   });
+      // } else {
+      //   nextPeriodLabel = existingNext.periodLabel;
+      // }
+
       NotificationModel.create({
         userId:           sub.userId,
         title:            'Payment Confirmed',
-        message:          `Your subscription payment for "${updated!.periodLabel}" (₹${updated!.amount}) has been confirmed. Next period: ${nextLabel}.`,
+        message:          `Your subscription payment for "${updated!.periodLabel}" (₹${updated!.amount}) has been confirmed.`,
         notificationType: 'general',
         channel:          'in_app',
         type:             'payment_confirmed',
-        metadata:         { periodLabel: updated!.periodLabel, nextPeriodLabel: nextLabel, amount: String(updated!.amount) },
+        metadata:         { periodLabel: updated!.periodLabel, amount: String(updated!.amount) },
       }).catch(console.error);
     }
 
@@ -297,8 +380,6 @@ export class SubscriptionUseCases {
 
     return toPeriodResponse(updated!);
   }
-
-  // ── Admin: direct subscription update ──────────────────────────────────────
 
   async adminUpdate(id: string, data: AdminUpdateSubscriptionDTO, adminUserId: string): Promise<SubscriptionResponseDTO> {
     const existing = await this.subscriptionRepo.findById(id);
@@ -324,8 +405,6 @@ export class SubscriptionUseCases {
 
     return toResponse(updated!);
   }
-
-  // ── Public: demo booking ────────────────────────────────────────────────────
 
   async bookDemo(data: DemoRequestDTO): Promise<{ message: string }> {
     const demo = await DemoRequestModel.create({
@@ -357,8 +436,6 @@ export class SubscriptionUseCases {
 
     return { message: 'Demo request received. Our team will contact you within 24 hours.' };
   }
-
-  // ── Builder: submit upgrade request ────────────────────────────────────────
 
   async requestUpgrade(data: UpgradeRequestDTO, adminEmail: string): Promise<{ message: string }> {
     const user = await this.userRepo.findById(data.userId);
@@ -411,8 +488,6 @@ export class SubscriptionUseCases {
     return { message: 'Upgrade request submitted. Admin will reach out to confirm and apply changes.' };
   }
 
-  // ── Admin: list upgrade requests ────────────────────────────────────────────
-
   async listUpgradeRequests(
     filter: { status?: string; userId?: string },
     page: number,
@@ -443,20 +518,6 @@ export class SubscriptionUseCases {
     return { data: mapped, total, page, limit, totalPages: Math.ceil(total / limit) || 1 };
   }
 
-  // ── Admin: resolve upgrade request ─────────────────────────────────────────
-  /**
-   * Full billing logic:
-   *
-   * 1. Update subscription to new totals (numberOfBuildings, numberOfUnits, amount).
-   * 2. Update any existing PENDING periods to the new full amount.
-   * 3. Find the currently PAID period that covers today (if any).
-   *    - Compute the DELTA (what is being added this period).
-   *    - Pro-rate the delta for the remaining days of the current paid period.
-   *    - Create a new "delta top-up" period: today → end of current paid period.
-   *      This ensures the builder only pays for the ADDITIONAL capacity,
-   *      not re-pays for what's already covered.
-   * 4. Notify builder.
-   */
   async resolveUpgradeRequest(
     requestId:   string,
     adminUserId: string,
@@ -489,7 +550,6 @@ export class SubscriptionUseCases {
       : 'Builder';
     const builderEmail  = request.userId?.email;
 
-    // ── Mark the request as resolved immediately ────────────────────────────
     await UpgradeRequestModel.findByIdAndUpdate(requestId, {
       status:     resolution.status,
       adminNotes: resolution.adminNotes ?? null,
@@ -497,7 +557,6 @@ export class SubscriptionUseCases {
       resolvedAt: new Date(),
     });
 
-    // ── If rejected — just notify and return ───────────────────────────────
     if (resolution.status === 'rejected') {
       NotificationModel.create({
         userId:           builderUserId,
@@ -518,7 +577,6 @@ export class SubscriptionUseCases {
       return { message: `Upgrade request rejected for ${builderName}.` };
     }
 
-    // ── Approved — apply billing logic ────────────────────────────────────
     if (!request.subscriptionId) {
       throw new BadRequestError('No subscription linked to this upgrade request. Create one manually.');
     }
@@ -541,7 +599,6 @@ export class SubscriptionUseCases {
 
     const newFullAmount = computeFullAmount(newBuildings, newUnits, sub.billingCycle, pricingConfig);
 
-    // 1️⃣  Update subscription totals
     const updatedSub = await this.subscriptionRepo.update(sub._id!.toString(), {
       numberOfBuildings: newBuildings,
       numberOfUnits:     newUnits,
@@ -549,11 +606,9 @@ export class SubscriptionUseCases {
       status:            'active',
     });
 
-    // 2️⃣  Collect all periods for this subscription
     const allPeriods = await this.subscriptionRepo.findPeriodsBySubscriptionId(sub._id!.toString());
     const now = new Date();
 
-    // Identify the current PAID period (covers today)
     const currentPaidPeriod = allPeriods.find(p =>
       p.status === 'paid' &&
       new Date(p.periodStart) <= now &&
@@ -562,15 +617,12 @@ export class SubscriptionUseCases {
 
     const createdPeriods: ISubscriptionPeriod[] = [];
 
-    // 3️⃣  Update all PENDING periods to new full amount
     const pendingPeriods = allPeriods.filter(p => p.status === 'pending');
     for (const pp of pendingPeriods) {
-      // Recalculate this period's amount at new totals
       const updatedAmount = computeFullAmount(newBuildings, newUnits, sub.billingCycle, pricingConfig);
       await this.subscriptionRepo.updatePeriod(pp._id!.toString(), { amount: updatedAmount });
     }
 
-    // 4️⃣  Delta top-up period for the remainder of the current paid period
     let deltaAmount: number | undefined;
     let deltaLabel:  string | undefined;
 
@@ -578,61 +630,72 @@ export class SubscriptionUseCases {
       const deltaBuildings = newBuildings - oldBuildings;
       const deltaUnits     = newUnits - oldUnits;
 
-      // Only create a delta period if there's actually an increase
       if (deltaBuildings > 0 || deltaUnits > 0) {
         const deltaStart = new Date(now);
-        // Strip time to start of day so it's clean
         deltaStart.setHours(0, 0, 0, 0);
         const periodEndDate = new Date(currentPaidPeriod.periodEnd);
 
-        deltaAmount = computeProRatedAmount(
-          deltaBuildings,
-          deltaUnits,
-          sub.billingCycle,
-          pricingConfig,
+        const existingDelta = await this.subscriptionRepo.findOverlappingPendingPeriod(
+          sub._id!.toString(),
           deltaStart,
-          periodEndDate,
+          periodEndDate
         );
 
-        const deltaEndLabel = periodEndDate.toLocaleDateString('en-IN', {
-          day: 'numeric', month: 'short', year: 'numeric',
-        });
-        const deltaStartLabel = deltaStart.toLocaleDateString('en-IN', {
-          day: 'numeric', month: 'short', year: 'numeric',
-        });
-        deltaLabel = `Top-up: ${deltaStartLabel} – ${deltaEndLabel}`;
+        if (!existingDelta) {
+          deltaAmount = computeProRatedAmount(
+            deltaBuildings,
+            deltaUnits,
+            sub.billingCycle,
+            pricingConfig,
+            deltaStart,
+            periodEndDate,
+          );
 
-        const deltaPeriod = await this.subscriptionRepo.createPeriod({
-          subscriptionId: sub._id!,
-          userId:         sub.userId,
-          periodStart:    deltaStart,
-          periodEnd:      periodEndDate,
-          periodLabel:    deltaLabel,
-          amount:         deltaAmount,
-          status:         'pending',
-        });
-        createdPeriods.push(deltaPeriod);
+          const deltaEndLabel = periodEndDate.toLocaleDateString('en-IN', {
+            day: 'numeric', month: 'short', year: 'numeric',
+          });
+          const deltaStartLabel = deltaStart.toLocaleDateString('en-IN', {
+            day: 'numeric', month: 'short', year: 'numeric',
+          });
+          deltaLabel = `Top-up: ${deltaStartLabel} – ${deltaEndLabel}`;
+
+          const deltaPeriod = await this.subscriptionRepo.createPeriod({
+            subscriptionId: sub._id!,
+            userId:         sub.userId,
+            periodStart:    deltaStart,
+            periodEnd:      periodEndDate,
+            periodLabel:    deltaLabel,
+            amount:         deltaAmount,
+            status:         'pending',
+          });
+          createdPeriods.push(deltaPeriod);
+        }
       }
     } else {
-      // No currently-paid period covering today — builder may be in a gap.
-      // Create a fresh period from today at new full rate.
       const freshStart = new Date(now);
       freshStart.setHours(0, 0, 0, 0);
       const { end: freshEnd, label: freshLabel } = buildPeriodDates(freshStart, sub.billingCycle);
 
-      const freshPeriod = await this.subscriptionRepo.createPeriod({
-        subscriptionId: sub._id!,
-        userId:         sub.userId,
-        periodStart:    freshStart,
-        periodEnd:      freshEnd,
-        periodLabel:    freshLabel,
-        amount:         newFullAmount,
-        status:         'pending',
-      });
-      createdPeriods.push(freshPeriod);
+      const existingFresh = await this.subscriptionRepo.findOverlappingPendingPeriod(
+        sub._id!.toString(),
+        freshStart,
+        freshEnd
+      );
+
+      if (!existingFresh) {
+        const freshPeriod = await this.subscriptionRepo.createPeriod({
+          subscriptionId: sub._id!,
+          userId:         sub.userId,
+          periodStart:    freshStart,
+          periodEnd:      freshEnd,
+          periodLabel:    freshLabel,
+          amount:         newFullAmount,
+          status:         'pending',
+        });
+        createdPeriods.push(freshPeriod);
+      }
     }
 
-    // 5️⃣  Notify builder
     const upgradeNote = deltaAmount != null
       ? `A top-up charge of ₹${deltaAmount} has been created for the remainder of your current billing period. Your next full period will be ₹${newFullAmount}.`
       : `Your next billing period will be ₹${newFullAmount}.`;
@@ -671,7 +734,6 @@ export class SubscriptionUseCases {
       metadata:    { oldBuildings, newBuildings, oldUnits, newUnits, newFullAmount, deltaAmount, deltaLabel },
     }).catch(console.error);
 
-    // Re-fetch periods for response
     const allUpdatedPeriods = await this.subscriptionRepo.findPeriodsBySubscriptionId(sub._id!.toString());
 
     return {
@@ -683,8 +745,6 @@ export class SubscriptionUseCases {
       periods:        allUpdatedPeriods.map(toPeriodResponse),
     };
   }
-
-  // ── Admin: demo requests ────────────────────────────────────────────────────
 
   async listDemoRequests(filter: { status?: string }, page: number, limit: number) {
     const skip = (page - 1) * limit;

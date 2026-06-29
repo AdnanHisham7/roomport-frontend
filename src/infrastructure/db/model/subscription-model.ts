@@ -6,7 +6,7 @@ export interface ISubscriptionPeriodDocument extends Omit<ISubscriptionPeriod, '
 
 const SubscriptionSchema = new Schema<ISubscriptionDocument>(
   {
-    userId:             { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true } as any,
+    userId:             { type: Schema.Types.ObjectId, ref: 'User', required: true, unique: true, index: true } as any,
     amount:             { type: Number, required: true },
     numberOfBuildings:  { type: Number, required: true },
     numberOfUnits:      { type: Number, required: true },
@@ -37,6 +37,11 @@ const SubscriptionPeriodSchema = new Schema<ISubscriptionPeriodDocument>(
     notes:          { type: String, default: null },
   },
   { timestamps: true }
+);
+
+SubscriptionPeriodSchema.index(
+  { subscriptionId: 1, periodStart: 1, periodEnd: 1 },
+  { unique: true }
 );
 
 export const SubscriptionModel       = mongoose.model<ISubscriptionDocument>('Subscription', SubscriptionSchema);

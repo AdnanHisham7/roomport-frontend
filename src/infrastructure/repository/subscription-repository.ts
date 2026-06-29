@@ -82,8 +82,6 @@ export class SubscriptionRepository implements ISubscriptionRepository {
     return result[0]?.total ?? 0;
   }
 
-  // ── Period management ────────────────────────────────────────────────────────
-
   async createPeriod(data: Omit<ISubscriptionPeriod, '_id' | 'createdAt' | 'updatedAt'>): Promise<ISubscriptionPeriod> {
     const doc = await SubscriptionPeriodModel.create(data);
     return this.toPeriodEntity(doc);
@@ -127,5 +125,19 @@ export class SubscriptionRepository implements ISubscriptionRepository {
       { $group: { _id: null, total: { $sum: '$amount' } } },
     ]);
     return result[0]?.total ?? 0;
+  }
+
+  async findOverlappingPendingPeriod(
+    subscriptionId: string,
+    periodStart: Date,
+    periodEnd: Date
+  ): Promise<ISubscriptionPeriod | null> {
+    const doc = await SubscriptionPeriodModel.findOne({
+      subscriptionId,
+      status: 'pending',
+      periodStart: { $lte: periodEnd },
+      periodEnd:   { $gte: periodStart },
+    }).lean();
+    return doc ? this.toPeriodEntity(doc) : null;
   }
 }
