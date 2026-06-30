@@ -234,7 +234,7 @@ export function AssignTenantModal({ open, onClose, unit, buildingId, buildingNam
           <Input label="Occupation (optional)" leftIcon={<Briefcase className="size-4" />} {...tenantForm.register('job')} />
           <Textarea label="Notes (optional)" {...tenantForm.register('notes')} />
           <div className="flex justify-end">
-            <Button type="submit" icon={<ChevronRight className="size-4" />} iconSide="right">Next: Agreement</Button>
+            <Button type="submit" iconRight={<ChevronRight className="size-4" />}>Next: Agreement</Button>
           </div>
         </form>
       )}

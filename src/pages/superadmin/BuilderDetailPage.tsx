@@ -357,7 +357,6 @@ export default function BuilderDetailPage() {
         title={`Delete ${b.first_name} ${b.last_name}?`}
         description="This will permanently delete the builder account, all their buildings and rooms. All tenants must be vacated first. This action cannot be undone."
         confirmLabel="Delete builder"
-        variant="danger"
       />
     </div>
   );

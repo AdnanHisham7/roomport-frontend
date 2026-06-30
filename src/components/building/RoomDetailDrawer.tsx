@@ -67,9 +67,7 @@ export function RoomDetailDrawer({ unit, open, onClose }: { unit: Unit | null; o
 
   const onSubmit = async (values: FormValues) => {
     try {
-      await updateUnit({
-        id: unit._id,
-        body: {
+        const body: any = {
           title: values.title,
           description: values.description,
           rentAmount: Number(values.rentAmount),
@@ -78,9 +76,10 @@ export function RoomDetailDrawer({ unit, open, onClose }: { unit: Unit | null; o
           status: values.status as any,
           amenities: values.amenities.split(',').map(a => a.trim()).filter(Boolean),
           images,
-          tokenAmount: values.status === 'reserved' ? Number(values.tokenAmount) : undefined,
-        },
-      }).unwrap();
+        };
+        if (values.status === 'reserved') body.tokenAmount = Number(values.tokenAmount);
+
+        await updateUnit({ id: unit._id, body }).unwrap();
       toast.success('Room updated.');
     } catch (err: any) {
       toast.error(err?.data?.message ?? 'Could not update room.');
