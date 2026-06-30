@@ -1,6 +1,6 @@
-const ACCESS_KEY = 'brift_access_token';
-const REFRESH_KEY = 'brift_refresh_token';
-const USER_KEY = 'brift_user';
+const ACCESS_KEY = 'roomport_access_token';
+const REFRESH_KEY = 'roomport_refresh_token';
+const USER_KEY = 'roomport_user';
 
 export const tokenStorage = {
   getAccess: () => localStorage.getItem(ACCESS_KEY),

@@ -36,7 +36,7 @@ export default function SetupPage() {
       <div className="mb-5 flex size-12 items-center justify-center rounded-2xl bg-crimson-50 text-crimson-500">
         <ShieldCheck className="size-6" />
       </div>
-      <h1 className="font-display text-2xl font-semibold text-ink">Initialize Brift</h1>
+      <h1 className="font-display text-2xl font-semibold text-ink">Initialize RoomPort</h1>
       <p className="mt-1.5 text-sm text-ink-soft">
         This one-time setup creates the platform's first super admin account. It only works while the database has no users yet.
       </p>

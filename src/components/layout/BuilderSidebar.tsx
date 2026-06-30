@@ -33,7 +33,7 @@ export function BuilderSidebar({ mobile, onNavigate }: { mobile?: boolean; onNav
         <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-crimson-500 to-crimson-700 text-white shadow-[0_8px_18px_-6px_rgba(200,30,61,0.55)]">
           <Building className="size-4.5" />
         </span>
-        {!collapsed && <span className="font-display text-lg font-semibold tracking-tight">Brift</span>}
+        {!collapsed && <span className="font-display text-lg font-semibold tracking-tight">RoomPort</span>}
       </div>
 
       <nav className="flex-1 space-y-1 overflow-y-auto px-2.5 py-2">

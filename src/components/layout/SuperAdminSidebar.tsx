@@ -56,7 +56,7 @@ export function SuperAdminSidebar({
         {!collapsed && (
           <div className="leading-tight">
             <p className="font-display text-[15px] font-semibold tracking-tight text-white">
-              Brift
+              RoomPort
             </p>
             <p className="text-[10.5px] font-medium uppercase tracking-wider text-white/40">
               Super Admin

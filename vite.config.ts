@@ -12,8 +12,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'icons/*.png'],
       manifest: {
-        name: 'Brift — Rental & Property Management',
-        short_name: 'Brift',
+        name: 'RoomPort — Rental & Property Management',
+        short_name: 'RoomPort',
         description: 'Find and manage rental spaces, from single rooms to entire buildings.',
         theme_color: '#ffffff',
         background_color: '#ffffff',

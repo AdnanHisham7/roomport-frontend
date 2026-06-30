@@ -126,7 +126,7 @@ export default function SubscriptionExpiredPage() {
           </div>
           <div className="flex items-center gap-2.5 text-sm text-ink-soft">
             <Mail className="size-4 text-crimson-500" />
-            <span>support@brift.in</span>
+            <span>support@roomport.in</span>
           </div>
           <p className="text-xs text-ink-faint">
             Your registered email: <strong>{user?.email}</strong>

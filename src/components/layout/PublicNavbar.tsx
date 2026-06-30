@@ -24,7 +24,7 @@ export function PublicNavbar() {
           <span className="flex size-9 items-center justify-center rounded-xl bg-gradient-to-br from-crimson-500 to-crimson-700 text-white shadow-[0_8px_18px_-6px_rgba(200,30,61,0.55)]">
             <Building2 className="size-4.5" />
           </span>
-          <span className="font-display text-lg font-semibold tracking-tight text-ink">Brift</span>
+          <span className="font-display text-lg font-semibold tracking-tight text-ink">RoomPort</span>
         </Link>
 
         <nav className="hidden items-center gap-1 lg:flex">

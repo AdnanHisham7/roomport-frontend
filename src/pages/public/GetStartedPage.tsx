@@ -93,7 +93,7 @@ export default function GetStartedPage() {
   return (
     <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6">
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
-        <h1 className="font-display text-3xl font-semibold text-ink">Get started with Brift</h1>
+        <h1 className="font-display text-3xl font-semibold text-ink">Get started with RoomPort</h1>
         <p className="mt-2 text-sm text-ink-soft">
           No online payment required. Book a demo and our team will register your account manually, tailored to your needs.
         </p>
@@ -188,7 +188,7 @@ export default function GetStartedPage() {
             </Card>
 
             <Card padding="md" className="bg-crimson-50 border-crimson-200">
-              <p className="text-sm font-semibold text-crimson-800">Why Brift?</p>
+              <p className="text-sm font-semibold text-crimson-800">Why RoomPort?</p>
               <ul className="mt-2 space-y-1 text-xs text-crimson-700">
                 <li>✓ Manage rooms, tenants & payments in one place</li>
                 <li>✓ Track rent collections & pending dues</li>

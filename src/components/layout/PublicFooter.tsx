@@ -11,7 +11,7 @@ export function PublicFooter() {
               <span className="flex size-8 items-center justify-center rounded-lg bg-gradient-to-br from-crimson-500 to-crimson-700 text-white">
                 <Building2 className="size-4" />
               </span>
-              <span className="font-display text-base font-semibold">Brift</span>
+              <span className="font-display text-base font-semibold">RoomPort</span>
             </Link>
             <p className="mt-3 max-w-xs text-sm text-ink-soft">
               Discover rooms and spaces, or run your entire rental portfolio — floor by floor, room by room.
@@ -34,7 +34,7 @@ export function PublicFooter() {
           </div>
         </div>
         <div className="mt-10 border-t border-line pt-6 text-xs text-ink-faint">
-          © {new Date().getFullYear()} Brift. All rights reserved.
+          © {new Date().getFullYear()} RoomPort. All rights reserved.
         </div>
       </div>
     </footer>

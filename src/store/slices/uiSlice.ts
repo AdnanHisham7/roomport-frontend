@@ -6,7 +6,7 @@ interface UiState {
 }
 
 const initialState: UiState = {
-  sidebarCollapsed: localStorage.getItem('brift_sidebar_collapsed') === 'true',
+  sidebarCollapsed: localStorage.getItem('roomport_sidebar_collapsed') === 'true',
   mobileSidebarOpen: false,
 };
 
@@ -16,7 +16,7 @@ const uiSlice = createSlice({
   reducers: {
     toggleSidebar: (state) => {
       state.sidebarCollapsed = !state.sidebarCollapsed;
-      localStorage.setItem('brift_sidebar_collapsed', String(state.sidebarCollapsed));
+      localStorage.setItem('roomport_sidebar_collapsed', String(state.sidebarCollapsed));
     },
     setMobileSidebarOpen: (state, action: PayloadAction<boolean>) => {
       state.mobileSidebarOpen = action.payload;

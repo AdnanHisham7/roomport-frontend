@@ -71,7 +71,7 @@ export default function LoginPage() {
       </form>
 
       <p className="mt-7 text-center text-sm text-ink-soft">
-        New to Brift?{' '}
+        New to RoomPort?{' '}
         <Link to="/get-started" className="font-medium text-crimson-600 hover:text-crimson-700">List your property</Link>
       </p>
     </motion.div>

@@ -30,7 +30,7 @@ export default function SuperDashboardPage() {
     <div>
       <div className="mb-6">
         <h1 className="font-display text-2xl font-semibold text-ink">Platform Overview</h1>
-        <p className="mt-1 text-sm text-ink-soft">Real-time metrics across the entire Brift platform.</p>
+        <p className="mt-1 text-sm text-ink-soft">Real-time metrics across the entire RoomPort platform.</p>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">

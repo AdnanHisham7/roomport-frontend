@@ -104,7 +104,7 @@ export default function LandingPage() {
       <section id="how-it-works" className="bg-paper-dim/60 px-4 py-20 sm:px-6">
         <div className="mx-auto max-w-5xl text-center">
           <h2 className="font-display text-2xl font-semibold text-ink sm:text-3xl">Built different, for builders</h2>
-          <p className="mx-auto mt-3 max-w-lg text-sm text-ink-soft sm:text-base">Stop juggling spreadsheets. Brift gives you a visual representation of your entire portfolio — the way you actually think about it.</p>
+          <p className="mx-auto mt-3 max-w-lg text-sm text-ink-soft sm:text-base">Stop juggling spreadsheets. RoomPort gives you a visual representation of your entire portfolio — the way you actually think about it.</p>
           <div className="mt-12 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {features.map((f, i) => (
               <motion.div key={i} initial={{ opacity: 0, y: 12 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.07 }}>

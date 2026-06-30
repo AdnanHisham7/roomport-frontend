@@ -22,7 +22,7 @@ export function AuthLayout() {
           <span className="flex size-10 items-center justify-center rounded-xl bg-white/15 backdrop-blur">
             <Building2 className="size-5" />
           </span>
-          <span className="font-display text-xl font-semibold">Brift</span>
+          <span className="font-display text-xl font-semibold">RoomPort</span>
         </Link>
 
         <div className="relative z-10 max-w-sm">
@@ -37,7 +37,7 @@ export function AuthLayout() {
           </p>
         </div>
 
-        <p className="relative z-10 text-xs text-white/50">© {new Date().getFullYear()} Brift. All rights reserved.</p>
+        <p className="relative z-10 text-xs text-white/50">© {new Date().getFullYear()} RoomPort. All rights reserved.</p>
       </div>
 
       <div className="flex flex-1 items-center justify-center bg-paper px-5 py-10 sm:px-8">
