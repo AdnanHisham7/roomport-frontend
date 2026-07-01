@@ -1,3 +1,4 @@
+import { env } from './infrastructure/config/env';
 import express, { Application, Request, Response } from "express";
 import cors from "cors";
 import helmet from "helmet";
@@ -53,7 +54,7 @@ const createApp = (): Application => {
   app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
   app.use(
     cors({
-      origin: process.env.APP_URL ?? "http://localhost:3000",
+      origin: env.APP_URL ?? "http://localhost:3000",
       credentials: true,
       methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
       allowedHeaders: ["Content-Type", "Authorization"],
@@ -96,7 +97,7 @@ const createApp = (): Application => {
       .json({
         success: true,
         message: "Brift API is running 🚀",
-        environment: process.env.NODE_ENV,
+        environment: env.NODE_ENV,
         timestamp: new Date().toISOString(),
       });
   });

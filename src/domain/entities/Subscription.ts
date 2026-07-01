@@ -13,7 +13,8 @@ export interface ISubscription {
   dueDate: Date;
   paidAt?: Date;
   status: SubscriptionStatus;
-  paymentMethod?: string;
+  paymentMethod?:    string;
+  stripePaymentId?:  string;
   invoicenumber?: string;
   notes?: string;
   createdAt?: Date;

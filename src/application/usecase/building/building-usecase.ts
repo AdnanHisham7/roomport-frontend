@@ -1,3 +1,4 @@
+import { logger } from '../../../shared/logger/logger';
 import { IBuilding, generateSlug } from '../../../domain/entities/Building';
 import { IBuildingRepository } from '../../../domain/repository/building-repository-impl';
 import { IFloorUseCases } from '../../interface/floor/floor-usecase.impl';
@@ -83,7 +84,7 @@ export class BuildingUseCases implements IBuildingUseCases {
       isFeatured: false, viewCount: 0, totalFloors: 0, totalUnits: 0,
     });
 
-    this.activityLogUc.logActivity({ action: ActivityLogAction.BUILDING_CREATED, entityType: ActivityLogEntityType.BUILDING, entityId: b._id, buildingId: b._id, userId: b.ownerId as any, metadata: { name: b.name, totalUnits: data.totalUnits } }).catch(console.error);
+    this.activityLogUc.logActivity({ action: ActivityLogAction.BUILDING_CREATED, entityType: ActivityLogEntityType.BUILDING, entityId: b._id, buildingId: b._id, userId: b.ownerId as any, metadata: { name: b.name, totalUnits: data.totalUnits } }).catch(err => logger.error(String(err)));
     return toResponse(b);
   }
 
@@ -111,7 +112,7 @@ export class BuildingUseCases implements IBuildingUseCases {
     }
 
     const updated = await this.buildingRepo.update(id, safeData);
-    this.activityLogUc.logActivity({ action: ActivityLogAction.BUILDING_UPDATED, entityType: ActivityLogEntityType.BUILDING, entityId: updated!._id, buildingId: updated!._id, userId: (requesterId || updated!.ownerId) as any, metadata: { changes_keys: Object.keys(safeData) } }).catch(console.error);
+    this.activityLogUc.logActivity({ action: ActivityLogAction.BUILDING_UPDATED, entityType: ActivityLogEntityType.BUILDING, entityId: updated!._id, buildingId: updated!._id, userId: (requesterId || updated!.ownerId) as any, metadata: { changes_keys: Object.keys(safeData) } }).catch(err => logger.error(String(err)));
     return toResponse(updated!);
   }
 
@@ -126,7 +127,7 @@ export class BuildingUseCases implements IBuildingUseCases {
     await this.unitRepo.findByBuildingId(id).then(units => Promise.all(units.map(u => this.unitRepo.delete(u._id!))));
     await this.buildingRepo.delete(id);
 
-    this.activityLogUc.logActivity({ action: ActivityLogAction.BUILDING_DELETED, entityType: ActivityLogEntityType.BUILDING, entityId: id, buildingId: id, userId: (requesterId || prev.ownerId) as any }).catch(console.error);
+    this.activityLogUc.logActivity({ action: ActivityLogAction.BUILDING_DELETED, entityType: ActivityLogEntityType.BUILDING, entityId: id, buildingId: id, userId: (requesterId || prev.ownerId) as any }).catch(err => logger.error(String(err)));
   }
 
   async getOccupancyStats(ownerId?: string): Promise<BuildingOccupancyStatsDTO> {

@@ -1,3 +1,4 @@
+import { logger } from '../../../shared/logger/logger';
 import bcrypt from 'bcryptjs';
 import { IRegisterUseCase } from '../../interface/common/register-usecase.impl';
 import { IUserRepository } from '../../../domain/repository/user-repository-impl';
@@ -6,7 +7,6 @@ import { IOtpService } from '../../interface/common/otp-servie-usecase.impl';
 import { RegisterRequestDTO, RegisterResponseDTO } from '../../dtos/user-usecaase/register.dto';
 import { BadRequestError } from '../../../shared/error/app-error';
 import { OtpPurpose } from '../../../shared/enums/OtpPurpose.enum';
-
 
 const SALT_ROUNDS = 12;
 
@@ -56,7 +56,7 @@ export class RegisterUseCase implements IRegisterUseCase {
     await this.otpService.saveOtp(user.email, OtpPurpose.EMAIL_VERIFICATION, otp);
     this.emailService
       .sendOtpEmail(user.email, otp, OtpPurpose.EMAIL_VERIFICATION)
-      .catch((err) => console.error('[EmailService] OTP send failed:', err));
+      .catch((err) => logger.error('[EmailService] OTP send failed:', err));
 
     return {
       message: 'Account created. Please check your email for the OTP to verify your account.',

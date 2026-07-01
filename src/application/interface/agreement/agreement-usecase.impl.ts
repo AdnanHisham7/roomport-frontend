@@ -1,7 +1,6 @@
 import { AgreementStatus } from "../../../domain/entities/Agreement";
 import { AgreementResponseDTO, CreateAgreementDTO, InitiateSigningDTO, PublicAgreementDTO, VerifySigningOtpDTO, ViewAgreementDTO } from "../../dtos/agreement/agreement.dto";
 
-
 export interface IAgreementUseCases {
   // ── Admin ──────────────────────────────────────────────────────────────────
   create(data: CreateAgreementDTO): Promise<AgreementResponseDTO>;

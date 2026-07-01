@@ -1,6 +1,5 @@
 import { CreateFloorDTO, FloorResponseDTO, UpdateFloorDTO } from "../../dtos/floor/floor.dto";
 
-
 export interface IFloorUseCases {
   create(data: CreateFloorDTO, requesterId?: string, requesterRole?: string): Promise<FloorResponseDTO>;
   getByBuilding(buildingId: string): Promise<FloorResponseDTO[]>;

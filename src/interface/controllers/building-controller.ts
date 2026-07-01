@@ -1,4 +1,4 @@
-import type { NextFunction, Request, RequestHandler, Response } from "express";
+import type { Request, Response } from "express";
 import { IBuildingUseCases } from "../../application/interface/building/building-usecase.impl";
 import type { CreateBuildingDTO, UpdateBuildingDTO } from "../../application/dtos/building/building.dto";
 import type { BuildingStatus, BuildingType } from "../../domain/entities/Building";
@@ -14,47 +14,6 @@ export class BuildingController {
   private static getSingleParam(value: string | string[] | undefined): string {
     return Array.isArray(value) ? value[0] ?? "" : value ?? "";
   }
-
-  static createValidation: RequestHandler = (
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ): void => {
-    const { name,
-      type,
-      totalUnits,
-      floors,
-      location,
-    } = req.body;
-
-    const errors: string[] = [];
-    if (!name?.trim()) errors.push('name is required.');
-    if (!type) {
-      errors.push(
-        'type is required (residential, commercial, mixed, industrial).'
-      );
-    }
-    if (!totalUnits || isNaN(Number(totalUnits)) || Number(totalUnits) < 1) {
-      errors.push('totalUnits must be >= 1.');
-    }
-    if (!floors || !Object.keys(floors).length || isNaN(Number(Object.keys(floors).length)) || Number(Object.keys(floors).length) < 1) {
-      errors.push('floors must be >= 1.');
-    }
-    if (!location?.address?.trim()) errors.push('location.address is required.');
-    if (!location?.city?.trim()) errors.push('location.city is required.');
-    if (!location?.state?.trim()) errors.push('location.state is required.');
-    if (!location?.pincode?.trim()) errors.push('location.pincode is required.');
-
-    if (errors.length > 0) {
-      res.status(422).json({
-        message: 'Validation failed.',
-        errors,
-      });
-      return;
-    }
-
-    next();
-  };
 
   private handleError(
     res: Response,

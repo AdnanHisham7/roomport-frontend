@@ -8,7 +8,6 @@ import { IUnitUseCases } from "../../interface/unit/unit-usecase-impl";
 import { IUnitRepository } from "../../../domain/repository/unit-repository-impl";
 import { ISubscriptionRepository } from "../../../domain/repository/subscription-repository-impl";
 
-
 function toResponse(f: IFloor): FloorResponseDTO {
   return {
     _id:          f._id!,

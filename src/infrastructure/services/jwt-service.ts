@@ -1,7 +1,7 @@
+import { env } from '../config/env';
 import jwt from 'jsonwebtoken';
 import type { IJwtService, TokenPayload } from '../../application/interface/common/jwt-service-usecase.impl';
 import { UnauthorizedError } from '../../shared/error/app-error';
-
 
 export class JwtService implements IJwtService {
   private readonly accessSecret:  string;
@@ -10,10 +10,10 @@ export class JwtService implements IJwtService {
   private readonly refreshExpiry: string;
 
   constructor() {
-    this.accessSecret  = process.env.JWT_ACCESS_SECRET  || 'access_secret_changeme';
-    this.refreshSecret = process.env.JWT_REFRESH_SECRET || 'refresh_secret_changeme';
-    this.accessExpiry  = process.env.JWT_ACCESS_EXPIRES_IN  || process.env.JWT_ACCESS_EXPIRY  || '15m';
-    this.refreshExpiry = process.env.JWT_REFRESH_EXPIRES_IN || process.env.JWT_REFRESH_EXPIRY || '7d';
+    this.accessSecret  = env.JWT_ACCESS_SECRET  || 'access_secret_changeme';
+    this.refreshSecret = env.JWT_REFRESH_SECRET || 'refresh_secret_changeme';
+    this.accessExpiry  = env.JWT_ACCESS_EXPIRES_IN  || process.env.JWT_ACCESS_EXPIRY  || '15m';
+    this.refreshExpiry = env.JWT_REFRESH_EXPIRES_IN || process.env.JWT_REFRESH_EXPIRY || '7d';
   }
 
   generateAccessToken(payload: TokenPayload): string {

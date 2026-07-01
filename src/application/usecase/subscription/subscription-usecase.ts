@@ -1,3 +1,5 @@
+import { env } from '../../../infrastructure/config/env';
+import { logger } from '../../../shared/logger/logger';
 import { ISubscriptionRepository } from '../../../domain/repository/subscription-repository-impl';
 import { IPlatformSettingRepository } from '../../../domain/repository/platform-setting-repository-impl';
 import { ISubscription, ISubscriptionPeriod, BillingCycle } from '../../../domain/entities/Subscription';
@@ -178,7 +180,7 @@ export class SubscriptionUseCases {
       userId:      adminUserId,
       description: `Subscription created for ${user.first_name} ${user.last_name}. Cycle: ${data.billingCycle}, Buildings: ${data.numberOfBuildings}, Units: ${data.numberOfUnits}, Amount: ₹${data.amount}.`,
       metadata:    { billingCycle: data.billingCycle, numberOfBuildings: data.numberOfBuildings, numberOfUnits: data.numberOfUnits, amount: data.amount },
-    }).catch(console.error);
+    }).catch(err => logger.error(String(err)));
 
     return { subscription: toResponse(sub), firstPeriod: toPeriodResponse(firstPeriod) };
   }
@@ -300,9 +302,9 @@ export class SubscriptionUseCases {
         channel:          'in_app',
         type:             'payment_pending',
         metadata:         { periodLabel: nextLabel, amount: String(nextAmount) },
-      }).catch(console.error);
+      }).catch(err => logger.error(String(err)));
     } catch (err) {
-      console.error('[renewExpiredPeriodIfNeeded] Non-fatal error:', err);
+      logger.error('[renewExpiredPeriodIfNeeded] Non-fatal error:', err);
     }
   }
 
@@ -367,7 +369,7 @@ export class SubscriptionUseCases {
         channel:          'in_app',
         type:             'payment_confirmed',
         metadata:         { periodLabel: updated!.periodLabel, amount: String(updated!.amount) },
-      }).catch(console.error);
+      }).catch(err => logger.error(String(err)));
     }
 
     this.activityLogUc.logActivity({
@@ -376,7 +378,7 @@ export class SubscriptionUseCases {
       entityId:    periodId,
       userId:      adminUserId,
       description: `Period "${updated!.periodLabel}" marked paid. Amount: ₹${updated!.amount}.`,
-    }).catch(console.error);
+    }).catch(err => logger.error(String(err)));
 
     return toPeriodResponse(updated!);
   }
@@ -393,7 +395,7 @@ export class SubscriptionUseCases {
       notificationType: 'general',
       channel:          'in_app',
       type:             'subscription_updated',
-    }).catch(console.error);
+    }).catch(err => logger.error(String(err)));
 
     this.activityLogUc.logActivity({
       action:      ActivityLogAction.SUBSCRIPTION_UPGRADED,
@@ -401,7 +403,7 @@ export class SubscriptionUseCases {
       entityId:    id,
       userId:      adminUserId,
       description: `Subscription updated. Buildings: ${data.numberOfBuildings ?? existing.numberOfBuildings}, Units: ${data.numberOfUnits ?? existing.numberOfUnits}.`,
-    }).catch(console.error);
+    }).catch(err => logger.error(String(err)));
 
     return toResponse(updated!);
   }
@@ -426,13 +428,13 @@ export class SubscriptionUseCases {
       channel:          'in_app',
       type:             'demo_request',
       metadata:         { demoRequestId: demo._id.toString(), email: data.email, name: `${data.firstName} ${data.lastName}` },
-    }).catch(console.error);
+    }).catch(err => logger.error(String(err)));
 
     this.emailService.sendNotificationEmail?.(
       process.env.ADMIN_EMAIL ?? 'admin@brift.in',
       `New Demo Request from ${data.firstName} ${data.lastName}`,
       `<h2>New Demo Request</h2><p><strong>Name:</strong> ${data.firstName} ${data.lastName}</p><p><strong>Email:</strong> ${data.email}</p><p><strong>Buildings:</strong> ${data.numberOfBuildings}</p><p><strong>Rooms:</strong> ${data.numberOfUnits}</p>`,
-    ).catch(console.error);
+    ).catch(err => logger.error(String(err)));
 
     return { message: 'Demo request received. Our team will contact you within 24 hours.' };
   }
@@ -442,15 +444,16 @@ export class SubscriptionUseCases {
     const userName = user ? `${user.first_name} ${user.last_name}` : data.userId;
     const sub = await this.subscriptionRepo.findByUserId(data.userId);
 
+    type UpgradeDoc = { _id: { toString(): string } };
     const upgradeRequest = await UpgradeRequestModel.create({
-      userId:               data.userId,
-      subscriptionId:       sub?._id?.toString() ?? null,
-      additionalBuildings:  data.additionalBuildings ?? 0,
-      additionalUnits:      data.additionalUnits ?? 0,
+      userId:                 data.userId,
+      subscriptionId:         sub?._id?.toString() ?? undefined,
+      additionalBuildings:    data.additionalBuildings ?? 0,
+      additionalUnits:        data.additionalUnits ?? 0,
       additionalBuildingData: data.additionalBuildingData ?? [],
-      message:              data.message ?? null,
-      status:               'pending',
-    });
+      message:                data.message ?? undefined,
+      status:                 'pending',
+    }) as unknown as UpgradeDoc;
 
     NotificationModel.create({
       recipientRole:    'super_admin',
@@ -469,13 +472,13 @@ export class SubscriptionUseCases {
         message:             data.message ?? '',
         subscriptionId:      sub?._id?.toString() ?? '',
       },
-    }).catch(console.error);
+    }).catch(err => logger.error(String(err)));
 
     this.emailService.sendNotificationEmail?.(
       adminEmail,
       `Upgrade Request from ${userName}`,
       `<h2>Subscription Upgrade / Renewal Request</h2><p><strong>Builder:</strong> ${userName} (${user?.email})</p><p><strong>Additional Buildings:</strong> ${data.additionalBuildings ?? 0}</p><p><strong>Additional Units:</strong> ${data.additionalUnits ?? 0}</p><p><strong>Message:</strong> ${data.message ?? 'None'}</p>`,
-    ).catch(console.error);
+    ).catch(err => logger.error(String(err)));
 
     this.activityLogUc.logActivity({
       action:      ActivityLogAction.UPGRADE_REQUEST_RECEIVED,
@@ -483,7 +486,7 @@ export class SubscriptionUseCases {
       entityId:    upgradeRequest._id.toString(),
       userId:      data.userId,
       description: `${userName} requested upgrade: +${data.additionalBuildings ?? 0} buildings, +${data.additionalUnits ?? 0} units.`,
-    }).catch(console.error);
+    }).catch(err => logger.error(String(err)));
 
     return { message: 'Upgrade request submitted. Admin will reach out to confirm and apply changes.' };
   }
@@ -566,13 +569,13 @@ export class SubscriptionUseCases {
         channel:          'in_app',
         type:             'upgrade_request_resolved',
         metadata:         { requestId, status: 'rejected', adminNotes: resolution.adminNotes ?? '' },
-      }).catch(console.error);
+      }).catch(err => logger.error(String(err)));
 
       this.emailService.sendNotificationEmail?.(
         builderEmail,
         'Subscription Upgrade Request Update',
         `<h2>Upgrade Request Update</h2><p>Your upgrade request has not been approved.</p>${resolution.adminNotes ? `<p><strong>Reason:</strong> ${resolution.adminNotes}</p>` : ''}<p>Contact support for help.</p>`
-      ).catch(console.error);
+      ).catch(err => logger.error(String(err)));
 
       return { message: `Upgrade request rejected for ${builderName}.` };
     }
@@ -717,13 +720,13 @@ export class SubscriptionUseCases {
         deltaLabel:        deltaLabel ?? '',
         adminNotes:        resolution.adminNotes ?? '',
       },
-    }).catch(console.error);
+    }).catch(err => logger.error(String(err)));
 
     this.emailService.sendNotificationEmail?.(
       builderEmail,
       'Subscription Upgrade Approved',
       `<h2>Subscription Upgraded</h2><p>Your subscription has been upgraded to <strong>${newBuildings} buildings</strong> and <strong>${newUnits} units</strong>.</p><p>${upgradeNote}</p>${resolution.adminNotes ? `<p><strong>Note:</strong> ${resolution.adminNotes}</p>` : ''}<p>Please log in to your billing page to review your updated periods.</p>`
-    ).catch(console.error);
+    ).catch(err => logger.error(String(err)));
 
     this.activityLogUc.logActivity({
       action:      ActivityLogAction.SUBSCRIPTION_UPGRADED,
@@ -732,7 +735,7 @@ export class SubscriptionUseCases {
       userId:      adminUserId,
       description: `Subscription for ${builderName} upgraded: ${oldBuildings}→${newBuildings} buildings, ${oldUnits}→${newUnits} units. New amount: ₹${newFullAmount}. Delta period: ₹${deltaAmount ?? 0}.`,
       metadata:    { oldBuildings, newBuildings, oldUnits, newUnits, newFullAmount, deltaAmount, deltaLabel },
-    }).catch(console.error);
+    }).catch(err => logger.error(String(err)));
 
     const allUpdatedPeriods = await this.subscriptionRepo.findPeriodsBySubscriptionId(sub._id!.toString());
 
@@ -744,6 +747,73 @@ export class SubscriptionUseCases {
       subscription:   toResponse(updatedSub!),
       periods:        allUpdatedPeriods.map(toPeriodResponse),
     };
+  }
+
+  async previewUpgradeForRequest(
+    requestId: string,
+    newTotalBuildings: number,
+    newTotalUnits: number,
+  ): Promise<{ newFullAmount: number; deltaAmount?: number; deltaLabel?: string }> {
+    const request = await UpgradeRequestModel.findById(requestId).lean();
+    if (!request) throw new NotFoundError('Upgrade request not found.');
+    return this.previewUpgrade(request.userId.toString(), newTotalBuildings, newTotalUnits);
+  }
+
+  /**
+   * Pure preview of what approving an upgrade would cost, without mutating anything.
+   * Mirrors the calculation used inside resolveUpgradeRequest so the admin UI and the
+   * actual approval always agree on the numbers — this is the single source of truth
+   * for upgrade pricing math; do not duplicate this calculation elsewhere.
+   */
+  async previewUpgrade(
+    builderUserId: string,
+    newTotalBuildings: number,
+    newTotalUnits: number,
+  ): Promise<{
+    newFullAmount: number;
+    deltaAmount?: number;
+    deltaLabel?: string;
+  }> {
+    const sub = await this.subscriptionRepo.findByUserId(builderUserId);
+    if (!sub) throw new NotFoundError('No subscription found for this builder.');
+
+    const pricing = await this.settingRepo.get();
+    const pricingConfig = {
+      monthlyPricePerBuilding: pricing.monthlyPricePerBuilding ?? pricing.pricePerBuilding,
+      monthlyPricePerUnit:     pricing.monthlyPricePerUnit     ?? pricing.pricePerUnit,
+      yearlyPricePerBuilding:  pricing.yearlyPricePerBuilding  ?? pricing.pricePerBuilding * 10,
+      yearlyPricePerUnit:      pricing.yearlyPricePerUnit      ?? pricing.pricePerUnit * 10,
+    };
+
+    const newFullAmount = computeFullAmount(newTotalBuildings, newTotalUnits, sub.billingCycle, pricingConfig);
+
+    const deltaBuildings = Math.max(0, newTotalBuildings - sub.numberOfBuildings);
+    const deltaUnits     = Math.max(0, newTotalUnits - sub.numberOfUnits);
+
+    if (deltaBuildings === 0 && deltaUnits === 0) {
+      return { newFullAmount };
+    }
+
+    const allPeriods = await this.subscriptionRepo.findPeriodsBySubscriptionId(sub._id!.toString());
+    const now = new Date();
+    const activePeriod = allPeriods.find(p =>
+      p.status === 'paid' &&
+      new Date(p.periodStart) <= now &&
+      new Date(p.periodEnd) >= now
+    );
+
+    if (!activePeriod) {
+      return { newFullAmount };
+    }
+
+    const periodEnd = new Date(activePeriod.periodEnd);
+    const deltaAmount = computeProRatedAmount(deltaBuildings, deltaUnits, sub.billingCycle, pricingConfig, now, periodEnd);
+
+    const deltaEndLabel = periodEnd.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+    const deltaStartLabel = now.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+    const deltaLabel = `Top-up: ${deltaStartLabel} – ${deltaEndLabel}`;
+
+    return { newFullAmount, deltaAmount, deltaLabel };
   }
 
   async listDemoRequests(filter: { status?: string }, page: number, limit: number) {

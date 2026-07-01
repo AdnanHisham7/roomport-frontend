@@ -1,3 +1,4 @@
+import { logger } from '../../shared/logger/logger';
 import { Request, Response } from 'express';
 import { CreateCheckoutSessionUseCase } from '../../application/usecase/payment/create-checkout-session-usecase';
 import { HandleWebhookUseCase } from '../../application/usecase/payment/handle-webhook-usecase';
@@ -65,7 +66,7 @@ export class PaymentController {
       await this.handleWebhookUseCase.execute(payload, signature);
       res.status(200).json({ received: true });
     } catch (error: any) {
-      console.error('Webhook Error:', error.message);
+      logger.error('Webhook Error:', error.message);
       res.status(400).send(`Webhook Error: ${error.message}`);
     }
   }

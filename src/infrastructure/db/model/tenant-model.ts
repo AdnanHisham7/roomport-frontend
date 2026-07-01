@@ -16,7 +16,7 @@ const TenantSchema = new Schema<ITenantDocument>(
   {
     firstName:   { type: String, required: true, trim: true },
     lastName:    { type: String, required: true, trim: true },
-    email:       { type: String, required: true, unique: true, lowercase: true, trim: true, index: true },
+    email:       { type: String, required: true, unique: false, lowercase: true, trim: true, index: true },
     phone:       { type: String, required: true, trim: true },
     document:    { type: [Schema.Types.ObjectId], ref: 'Document', default: [] } as any,
     addressId:   { type: Schema.Types.ObjectId, ref: 'Address', default: null } as any,

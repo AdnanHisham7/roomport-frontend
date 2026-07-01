@@ -1,3 +1,4 @@
+import { logger } from '../../../shared/logger/logger';
 import bcrypt from 'bcryptjs';
 import { IAuthUseCases } from '../../interface/common/auth-usecase.impl';
 import { IUserRepository } from '../../../domain/repository/user-repository-impl';
@@ -64,7 +65,7 @@ export class AuthUseCases implements IAuthUseCases {
     await this.userRepository.updateLastLogin(user._id!);
 
     if (user.role === 'admin' || user.role === 'manager') {
-      this.subscriptionUseCase.renewExpiredPeriodIfNeeded(user._id!).catch(console.error);
+      this.subscriptionUseCase.renewExpiredPeriodIfNeeded(user._id!).catch(err => logger.error(String(err)));
     }
 
     return {

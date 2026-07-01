@@ -1,3 +1,4 @@
+import { env } from '../config/env';
 import Stripe from 'stripe';
 import { IStripeService } from '../../application/interface/common/stripe-service.interface';
 
@@ -5,7 +6,7 @@ export class StripeService implements IStripeService {
   private stripe: Stripe;
 
   constructor() {
-    this.stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
+    this.stripe = new Stripe(env.STRIPE_SECRET_KEY || '', {
       apiVersion: '2026-02-25.clover',
     });
   }
@@ -61,7 +62,7 @@ export class StripeService implements IStripeService {
   }
 
   constructWebhookEvent(payload: string | Buffer, signature: string): Stripe.Event {
-    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || '';
+    const webhookSecret = env.STRIPE_WEBHOOK_SECRET || '';
     return this.stripe.webhooks.constructEvent(payload, signature, webhookSecret);
   }
 }

@@ -1,7 +1,6 @@
 import { ExpenseCategory } from "../../../domain/entities/Expence";
 import { CreateExpenseDTO, ExpenseResponseDTO, ExpenseTrackerSummaryDTO, UpdateExpenseDTO } from "../../dtos/expence/expence-dto";
 
-
 export interface IExpenseUseCases {
   // ── CRUD ──────────────────────────────────────────────────────────────────
   create(data: CreateExpenseDTO): Promise<ExpenseResponseDTO>;

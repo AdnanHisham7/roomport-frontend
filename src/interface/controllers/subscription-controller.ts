@@ -1,3 +1,4 @@
+import { env } from '../../infrastructure/config/env';
 import type { Request, Response } from 'express';
 import { SubscriptionUseCases } from '../../application/usecase/subscription/subscription-usecase';
 import { AppError } from '../../shared/error/app-error';
@@ -52,11 +53,11 @@ export class SubscriptionController {
 
   bookDemo = async (req: Request, res: Response): Promise<Response> => {
     try {
-      const { firstName, lastName, email, phone, companyName, numberOfBuildings, numberOfUnits, message } = req.body;
-      if (!firstName?.trim() || !lastName?.trim() || !email?.trim() || !numberOfBuildings || !numberOfUnits) {
-        return res.status(422).json({ message: 'firstName, lastName, email, numberOfBuildings, numberOfUnits are required.' });
-      }
-      const result = await this.uc.bookDemo({ firstName, lastName, email, phone, companyName, numberOfBuildings: Number(numberOfBuildings), numberOfUnits: Number(numberOfUnits), message });
+      const result = await this.uc.bookDemo({
+        ...req.body,
+        numberOfBuildings: Number(req.body.numberOfBuildings),
+        numberOfUnits:     Number(req.body.numberOfUnits),
+      });
       return res.status(201).json(result);
     } catch (error) { return this.handleError(res, error, 'Failed to submit demo request.'); }
   };
@@ -65,12 +66,13 @@ export class SubscriptionController {
 
   createBuilderSubscription = async (req: Request, res: Response): Promise<Response> => {
     try {
-      const { userId, billingCycle, numberOfBuildings, numberOfUnits, amount, notes } = req.body;
-      if (!userId || !billingCycle || !numberOfBuildings || !numberOfUnits || amount === undefined) {
-        return res.status(422).json({ message: 'userId, billingCycle, numberOfBuildings, numberOfUnits, amount are required.' });
-      }
       const result = await this.uc.createBuilderSubscription(
-        { userId, billingCycle, numberOfBuildings: Number(numberOfBuildings), numberOfUnits: Number(numberOfUnits), amount: Number(amount), notes },
+        {
+          ...req.body,
+          numberOfBuildings: Number(req.body.numberOfBuildings),
+          numberOfUnits:     Number(req.body.numberOfUnits),
+          amount:            Number(req.body.amount),
+        },
         req.user!.userId
       );
       return res.status(201).json({ message: 'Subscription created successfully.', ...result });

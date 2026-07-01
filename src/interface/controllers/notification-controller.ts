@@ -1,3 +1,4 @@
+import { logger } from '../../shared/logger/logger';
 import { Request, Response } from 'express';
 import { INotificationUseCase } from '../../application/interface/common/notification-usecase.impl';
 
@@ -12,7 +13,7 @@ export class NotificationController {
       const notifications = await this.notificationUseCase.getUserNotifications(userId, role);
       res.status(200).json({ success: true, data: notifications });
     } catch (error) {
-      console.error('Error fetching notifications:', error);
+      logger.error('Error fetching notifications:', error);
       res.status(500).json({ success: false, message: 'Internal server error' });
     }
   }
@@ -25,7 +26,7 @@ export class NotificationController {
       const count = await this.notificationUseCase.getUnreadCount(userId, role);
       res.status(200).json({ success: true, data: { count } });
     } catch (error) {
-      console.error('Error fetching unread count:', error);
+      logger.error('Error fetching unread count:', error);
       res.status(500).json({ success: false, message: 'Internal server error' });
     }
   }
@@ -37,7 +38,7 @@ export class NotificationController {
       if (!notification) { res.status(404).json({ success: false, message: 'Notification not found' }); return; }
       res.status(200).json({ success: true, data: notification });
     } catch (error) {
-      console.error('Error marking notification as read:', error);
+      logger.error('Error marking notification as read:', error);
       res.status(500).json({ success: false, message: 'Internal server error' });
     }
   }
@@ -50,7 +51,7 @@ export class NotificationController {
       await this.notificationUseCase.markAllAsRead(userId, role);
       res.status(200).json({ success: true, message: 'All notifications marked as read' });
     } catch (error) {
-      console.error('Error marking all notifications as read:', error);
+      logger.error('Error marking all notifications as read:', error);
       res.status(500).json({ success: false, message: 'Internal server error' });
     }
   }
@@ -63,7 +64,7 @@ export class NotificationController {
       await this.notificationUseCase.sendNotification({ userId, title, message, notificationType, channel, buildingId, tenantId });
       res.status(200).json({ success: true, message: 'Test notification triggered successfully!' });
     } catch (error) {
-      console.error('Error sending test notification:', error);
+      logger.error('Error sending test notification:', error);
       res.status(500).json({ success: false, message: 'Internal server error' });
     }
   }

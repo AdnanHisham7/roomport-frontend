@@ -1,3 +1,4 @@
+import { logger } from '../../../shared/logger/logger';
 import Stripe from 'stripe';
 import bcrypt from 'bcryptjs';
 import { IStripeService } from '../../interface/common/stripe-service.interface';
@@ -47,21 +48,28 @@ export class HandleWebhookUseCase {
               });
               
               const name = `${firstName} ${lastName}`.trim();
-              await this.emailService.sendWelcomeCredentials(user.email, name, rawPassword).catch(console.error);
+              await this.emailService.sendWelcomeCredentials(user.email, name, rawPassword).catch(err => logger.error(String(err)));
             } else {
                await this.userRepository.update(user._id!, { paymentStatus: true });
             }
 
+            const now = new Date();
+            const yearFromNow = new Date(now);
+            yearFromNow.setFullYear(yearFromNow.getFullYear() + 1);
+
             const subscription = await this.subscriptionRepository.create({
-              userId: user._id!,
-              amount: Number(amount),
-              numberOfBuildings: Number(numberOfBuildings),
-              numberOfUnits: Number(numberOfUnits),
-              dueDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)), // 1 year billing cycle
-              status: 'paid',
-              paidAt: new Date(),
+              userId:             user._id!,
+              amount:             Number(amount),
+              numberOfBuildings:  Number(numberOfBuildings),
+              numberOfUnits:      Number(numberOfUnits),
+              billingCycle:       'yearly',
+              currentPeriodStart: now,
+              currentPeriodEnd:   yearFromNow,
+              dueDate:            yearFromNow,
+              status:             'paid',
+              paidAt:             now,
               stripePaymentId,
-              paymentMethod: 'stripe'
+              paymentMethod:      'stripe',
             });
             
             await this.userRepository.update(user._id!, { subscriptionId: subscription._id });

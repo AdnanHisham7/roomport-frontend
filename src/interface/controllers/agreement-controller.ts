@@ -21,26 +21,10 @@ export class AgreementController {
   create = async (req: Request, res: Response): Promise<Response> => {
     try {
       const { tenantId, buildingId, unitId, title, body, terms, monthlyRent, startDate, endDate } = req.body;
-      const errors: string[] = [];
-
-      if (!tenantId?.trim())   errors.push('tenantId is required.');
-      if (!buildingId?.trim()) errors.push('buildingId is required.');
-      if (!title?.trim())      errors.push('title is required.');
-      if (!body?.trim())       errors.push('body is required.');
-      if (monthlyRent === undefined || isNaN(Number(monthlyRent)))
-        errors.push('monthlyRent must be a number.');
-      if (!startDate) errors.push('startDate is required.');
-      if (!endDate)   errors.push('endDate is required.');
-
-      if (errors.length > 0) {
-        return res.status(422).json({ message: 'Validation failed.', errors });
-      }
-
       const user = req.user!;
       if (user.role !== 'super_admin') {
         await this.assertBuildingOwnership(buildingId, user.userId, user.role);
       }
-
       const agreement = await this.agreementUseCases.create({
         tenantId, buildingId, unitId,
         createdBy:   user.userId,
@@ -48,7 +32,6 @@ export class AgreementController {
         monthlyRent: Number(monthlyRent),
         startDate, endDate,
       });
-
       return res.status(201).json({ message: 'Agreement draft created.', data: agreement });
     } catch (err) { return this.handleError(res, err, 'Failed to create agreement.'); }
   };
@@ -117,7 +100,7 @@ export class AgreementController {
 
   viewByToken = async (req: Request<{ token: string }>, res: Response): Promise<Response> => {
     try {
-      const result = await this.agreementUseCases.viewByToken({ token: req.params.token });
+      const result = await this.agreementUseCases.viewByToken({ rawToken: req.params.token });
       return res.status(200).json({ data: result });
     } catch (err) { return this.handleError(res, err, 'Failed to view agreement.'); }
   };

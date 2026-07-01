@@ -1,7 +1,6 @@
 import mongoose, { Document, Schema } from 'mongoose';
 import { IExpense } from '../../../domain/entities/Expence';
 
-
 export interface IExpenseDocument extends Omit<IExpense, '_id'>, Document {}
 
 const ExpenseSchema = new Schema<IExpenseDocument>(

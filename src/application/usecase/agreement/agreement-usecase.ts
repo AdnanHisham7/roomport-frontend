@@ -1,3 +1,5 @@
+import { env } from '../../../infrastructure/config/env';
+import { logger } from '../../../shared/logger/logger';
 import crypto   from 'crypto';
 import bcrypt   from 'bcryptjs';
 import { AgreementStatus, IAgreement } from '../../../domain/entities/Agreement';
@@ -108,7 +110,7 @@ export class AgreementUseCases implements IAgreementUseCases {
       audit:  { ...agreement.audit, sentAt: new Date() },
     });
 
-    const appUrl    = process.env.APP_URL || 'http://localhost:3000';
+    const appUrl    = env.APP_URL || 'http://localhost:3000';
     const signingUrl = `${appUrl}/sign/${rawToken}`;
 
     await this.emailService.sendSigningLink(
@@ -289,7 +291,7 @@ export class AgreementUseCases implements IAgreementUseCases {
     // Non-blocking completion email
     this.emailService
       .sendCompletionEmail(tenant.email, `${tenant.firstName} ${tenant.lastName}`, agreement.title, finalPdfUrl)
-      .catch((err) => console.error('[EmailService] Completion email failed:', err));
+      .catch((err) => logger.error('[EmailService] Completion email failed:', err));
 
     return { message: 'Agreement signed, verified, and completed successfully.', finalPdfUrl };
   }

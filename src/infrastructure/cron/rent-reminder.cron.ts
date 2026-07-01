@@ -1,3 +1,4 @@
+import { logger } from '../../shared/logger/logger';
 import cron from 'node-cron';
 import { TenantRepository } from '../repository/tenant-repository';
 import { BuildingRepository } from '../repository/building-repository';
@@ -12,7 +13,7 @@ export function startRentReminderCron() {
 
   // Run automatically every day at 08:00 AM server time
   cron.schedule('0 8 * * *', async () => {
-    console.log('[Cron] Executing daily rent reminders rule module...');
+    logger.info('[Cron] Executing daily rent reminders rule module...');
     try {
       const activeTenants = await tenantRepo.findAll({ status: 'active' } as any);
       const today = new Date();
@@ -57,7 +58,7 @@ export function startRentReminderCron() {
 
         if (send) {
           // Notify the Tenant
-          await emailService.sendNotificationEmail(tenant.email, title, message).catch(console.error);
+          await emailService.sendNotificationEmail(tenant.email, title, message).catch(err => logger.error(String(err)));
 
           // Find Admin Email to copy them
           if (tenant.buildingId) {
@@ -69,16 +70,16 @@ export function startRentReminderCron() {
                       admin.email, 
                       `[ADMIN COPY] Action Sent to Tenant: ${title}`, 
                       `You are receiving a copy of a rent notification sent to tenant ${tenant.firstName} ${tenant.lastName} (${tenant.email}).\n\nOriginal Message:\n${message}`
-                   ).catch(console.error);
+                   ).catch(err => logger.error(String(err)));
                 }
              }
           }
         }
       }
     } catch (e) {
-      console.error('[Cron Error] Rent Reminder Script Failed:', e);
+      logger.error('[Cron Error] Rent Reminder Script Failed:', e);
     }
   });
 
-  console.log('[Cron] Rent Reminder Cron Job safely registered (Target: daily 08:00 AM).');
+  logger.info('[Cron] Rent Reminder Cron Job safely registered (Target: daily 08:00 AM).');
 }

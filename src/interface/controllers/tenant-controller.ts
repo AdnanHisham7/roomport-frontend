@@ -1,44 +1,9 @@
-import type { Request, Response, NextFunction, RequestHandler } from 'express';
+import type { Request, Response } from 'express';
 import { ITenantUseCases } from '../../application/interface/tenant/tenant-usecase-impl';
 import { AppError } from '../../shared/error/app-error';
 
 export class TenantController {
   constructor(private readonly tenantUseCases: ITenantUseCases) {}
-
-  static createValidation: RequestHandler = (req: Request, res: Response, next: NextFunction): void => {
-    const { firstName, lastName, email, phone, rentType, rentAmount, dueDate, agreementStartDate, agreementEndDate } = req.body;
-    const errors: string[] = [];
-
-    if (!firstName?.trim())  errors.push('firstName is required.');
-    if (!lastName?.trim())   errors.push('lastName is required.');
-    if (!email?.trim())      errors.push('email is required.');
-    if (!phone?.trim())      errors.push('phone is required.');
-    if (!rentType)           errors.push('rentType is required (monthly, quarterly, half_yearly, yearly, custom).');
-    if (rentAmount === undefined || rentAmount === null || isNaN(Number(rentAmount)))
-      errors.push('rentAmount is required and must be a number.');
-    if (!dueDate || isNaN(Number(dueDate)) || Number(dueDate) < 1 || Number(dueDate) > 31)
-      errors.push('dueDate must be a number between 1 and 31.');
-
-    if (agreementStartDate && agreementEndDate) {
-      const start = new Date(agreementStartDate);
-      const end   = new Date(agreementEndDate);
-      if (isNaN(start.getTime())) errors.push('agreementStartDate is not a valid date.');
-      if (isNaN(end.getTime()))   errors.push('agreementEndDate is not a valid date.');
-      if (!isNaN(start.getTime()) && !isNaN(end.getTime()) && end <= start) {
-        errors.push('Agreement end date must be after the start date.');
-      }
-    } else if (agreementStartDate && !agreementEndDate) {
-      errors.push('agreementEndDate is required when agreementStartDate is provided.');
-    } else if (!agreementStartDate && agreementEndDate) {
-      errors.push('agreementStartDate is required when agreementEndDate is provided.');
-    }
-
-    if (errors.length > 0) {
-      res.status(422).json({ message: 'Validation failed.', suggestion: 'Fix the errors and try again.', errors });
-      return;
-    }
-    next();
-  };
 
   getAll = async (req: Request, res: Response): Promise<Response> => {
     try {
@@ -63,9 +28,7 @@ export class TenantController {
     try {
       const tenant = await this.tenantUseCases.create({
         ...req.body,
-        rentAmount: Number(req.body.rentAmount),
-        dueDate:    Number(req.body.dueDate),
-        createdBy:  req.user!.userId,
+        createdBy: req.user!.userId,
       });
       return res.status(201).json({ message: 'Tenant created successfully.', data: tenant });
     } catch (err) { return this.handleError(res, err, 'Failed to create tenant.'); }
@@ -99,9 +62,6 @@ export class TenantController {
   transferTenant = async (req: Request<{ id: string }>, res: Response): Promise<Response> => {
     try {
       const { targetUnitId } = req.body;
-      if (!targetUnitId?.trim()) {
-        return res.status(422).json({ message: 'targetUnitId is required.', suggestion: 'Provide the room to transfer the tenant to.' });
-      }
       const user = req.user!;
       const scopedUserId = user.role === 'super_admin' ? undefined : user.userId;
       const result = await this.tenantUseCases.transferTenant(req.params.id, targetUnitId, user.userId, scopedUserId);

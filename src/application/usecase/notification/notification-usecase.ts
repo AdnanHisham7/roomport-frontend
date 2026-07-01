@@ -1,3 +1,4 @@
+import { logger } from '../../../shared/logger/logger';
 import { Notification, NotificationType, NotificationChannel } from '../../../domain/entities/Notification';
 import { INotificationRepository } from '../../../domain/repository/notification-repository';
 import { INotificationUseCase, SendMultiChannelNotificationDTO } from '../../interface/common/notification-usecase.impl';
@@ -64,14 +65,14 @@ export class NotificationUseCase implements INotificationUseCase {
         if (channel === NotificationChannel.EMAIL && user.email && this.emailService.sendNotificationEmail) {
           promises.push(
             this.emailService.sendNotificationEmail(user.email, title, message).catch(err => {
-              console.error('Failed to send email notification:', err);
+              logger.error('Failed to send email notification:', err);
             })
           );
         }
         if (channel === NotificationChannel.SMS && user.phone_number) {
           promises.push(
             this.smsService.sendSms(user.phone_number, `[${title}]: ${message}`).catch(err => {
-              console.error('Failed to send SMS notification:', err);
+              logger.error('Failed to send SMS notification:', err);
             })
           );
         }

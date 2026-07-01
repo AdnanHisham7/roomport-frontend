@@ -1,3 +1,4 @@
+import { logger } from '../../../shared/logger/logger';
 import { ITenant } from '../../../domain/entities/Tenant';
 import { ITenantRepository } from '../../../domain/repository/tenant-repository-impl';
 import { BadRequestError, ForbiddenError, NotFoundError } from '../../../shared/error/app-error';
@@ -76,6 +77,8 @@ export class TenantUseCases implements ITenantUseCases {
       }
     }
 
+    console.log('Creating tenant with data:', data);
+
     const tenant = await this.tenantRepository.create({
       ...data,
       status: 'pending',
@@ -94,8 +97,8 @@ export class TenantUseCases implements ITenantUseCases {
       userId:      data.createdBy ?? (tenant.userId as any),
       description: `Tenant ${tenant.firstName} ${tenant.lastName} created${tenant.unitId ? ' and assigned to unit' : ''}. Rent: ₹${tenant.rentAmount}/${tenant.rentType}.`,
       metadata:    { firstName: tenant.firstName, lastName: tenant.lastName, rentAmount: tenant.rentAmount, rentType: tenant.rentType },
-    }).catch(console.error);
-
+    }).catch(err => logger.error(String(err)));
+    console.log('Activity log created for tenant creation:', tenant._id);
     return toResponse(tenant);
   }
 
@@ -145,7 +148,7 @@ export class TenantUseCases implements ITenantUseCases {
         userId:      ownerId ?? (updated!.userId as any),
         description: `Tenant ${updated!.firstName} ${updated!.lastName} status changed from ${existing.status} to ${data.status}.`,
         metadata:    { oldStatus: existing.status, newStatus: data.status },
-      }).catch(console.error);
+      }).catch(err => logger.error(String(err)));
     } else {
       this.activityLogUc.logActivity({
         action:      ActivityLogAction.TENANT_UPDATED,
@@ -155,7 +158,7 @@ export class TenantUseCases implements ITenantUseCases {
         unitId:      updated!.unitId,
         userId:      ownerId ?? (updated!.userId as any),
         description: `Tenant ${updated!.firstName} ${updated!.lastName} profile updated.`,
-      }).catch(console.error);
+      }).catch(err => logger.error(String(err)));
     }
 
     return toResponse(updated!);
@@ -182,7 +185,7 @@ export class TenantUseCases implements ITenantUseCases {
       unitId:      existing.unitId,
       userId:      ownerId ?? (existing.userId as any),
       description: `Tenant ${existing.firstName} ${existing.lastName} was deleted.`,
-    }).catch(console.error);
+    }).catch(err => logger.error(String(err)));
   }
 
   async getTenantLeases(tenantId: string): Promise<any[]> {
@@ -248,7 +251,7 @@ export class TenantUseCases implements ITenantUseCases {
       userId:      adminUserId,
       description: `Tenant ${tenant.firstName} ${tenant.lastName} transferred from unit ${sourceUnitId ?? 'none'} to unit ${targetUnit.unitNumber}.${displacedTenantInfo ? ` ${displacedTenantInfo}.` : ''}`,
       metadata:    { fromUnitId: sourceUnitId, toUnitId: targetUnitId, displacedTenantInfo },
-    }).catch(console.error);
+    }).catch(err => logger.error(String(err)));
 
     const message = displacedTenantInfo
       ? `Tenant transferred. ${displacedTenantInfo}.`

@@ -1,3 +1,4 @@
+import { logger } from '../../shared/logger/logger';
 import type { Request, Response, NextFunction } from 'express';
 import { AppError } from '../../shared/error/app-error';
 import { MulterError } from 'multer';
@@ -8,7 +9,7 @@ export const globalErrorHandler = (
   res: Response,
   _next: NextFunction
 ): void => {
-  console.log('Global error handler caught:', error);
+  logger.info('Global error handler caught:', error);
 
   if (error instanceof AppError) {
     res.status(error.statusCode).json({

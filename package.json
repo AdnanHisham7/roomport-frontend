@@ -6,7 +6,10 @@
   "scripts": {
     "dev": "nodemon --watch src --exec ts-node src/server.ts",
     "build": "tsc",
-    "start": "node dist/server.js"
+    "start": "node dist/server.js",
+    "lint": "eslint src --max-warnings 0",
+    "lint:fix": "eslint src --fix",
+    "type-check": "tsc --noEmit"
   },
   "keywords": [],
   "author": "",
@@ -41,6 +44,7 @@
     "pdfkit": "^0.18.0",
     "stripe": "^20.4.1",
     "twilio": "^5.13.0",
+    "winston": "^3.19.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {
@@ -49,6 +53,9 @@
     "@types/node": "^25.5.0",
     "@types/node-cron": "^3.0.11",
     "@types/twilio": "^3.19.2",
+    "@typescript-eslint/eslint-plugin": "^8.62.1",
+    "@typescript-eslint/parser": "^8.62.1",
+    "eslint": "^10.6.0",
     "nodemon": "^3.1.14",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"

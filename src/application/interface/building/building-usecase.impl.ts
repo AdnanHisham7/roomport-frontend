@@ -1,7 +1,6 @@
 import { BuildingStatus, BuildingType } from "../../../domain/entities/Building";
 import { BuildingOccupancyStatsDTO, BuildingResponseDTO, CreateBuildingDTO, UpdateBuildingDTO } from "../../dtos/building/building.dto";
 
-
 export interface IBuildingUseCases {
   create(data: CreateBuildingDTO): Promise<BuildingResponseDTO>;
   createFloors(floorData: { buildingId: string; floorNumber: number; name: string; totalUnits: number; }[], requesterId?: string, requesterRole?: string): Promise<void>;

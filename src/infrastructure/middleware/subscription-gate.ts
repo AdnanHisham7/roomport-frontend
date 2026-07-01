@@ -1,3 +1,4 @@
+import { logger } from '../../shared/logger/logger';
 import type { Request, Response, NextFunction } from 'express';
 import { SubscriptionModel, SubscriptionPeriodModel } from '../db/model/subscription-model';
 import mongoose from 'mongoose';
@@ -58,7 +59,7 @@ export const requireActiveSubscription = async (
 
     next();
   } catch (err) {
-    console.error('[requireActiveSubscription] Error:', err);
+    logger.error('[requireActiveSubscription] Error:', err);
     next();
   }
 };

@@ -1,3 +1,4 @@
+import { logger } from '../../../shared/logger/logger';
 import { IUnitRepository } from "../../../domain/repository/unit-repository-impl";
 import { IFloorRepository } from "../../../domain/repository/floor-repository-impl";
 import { CreateUnitDTO, UnitResponseDTO, UpdateUnitDTO } from "../../dtos/unit/unit.dto";
@@ -107,7 +108,7 @@ export class UnitUseCases implements IUnitUseCases {
 
   async bulkUpdate(unitIds: string[], data: UpdateUnitDTO): Promise<UnitResponseDTO[]> {
     const promises = unitIds.map(id => this.update(id, data).catch(err => {
-      console.error(`Failed to update unit ${id}:`, err);
+      logger.error(`Failed to update unit ${id}:`, err);
       return null;
     }));
     const results = await Promise.all(promises);

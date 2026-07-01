@@ -3,7 +3,9 @@ import { BuildingController } from "../controllers/building-controller";
 import { FloorController } from "../controllers/floor-controller";
 import { UserRole } from "../../shared/enums/SystemRoles.enum";
 import { authenticate, authorize } from "../middleware/auth-middleware";
-
+import { validate } from "../middleware/validate-middleware";
+import { createBuildingSchema } from "../validators/building.validator";
+import { createFloorSchema, updateFloorSchema } from "../validators/domain.validator";
 
 const ADMIN_ROLES = [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER];
 const SUPER_ROLES = [UserRole.ADMIN, UserRole.SUPER_ADMIN];
@@ -20,13 +22,13 @@ export const createBuildingRouter = (
   r.get('/stats/occupancy',         building.getOccupancyStats);
   r.get('/',                         building.getAll);
   r.get('/:id',                      building.getById);
-  r.post('/',   authorize(...ADMIN_ROLES), BuildingController.createValidation, building.create);
+  r.post('/',   authorize(...ADMIN_ROLES), validate(createBuildingSchema), building.create);
   r.put('/:id/update', authorize(...ADMIN_ROLES), building.update);
   r.delete('/:id/delete', authorize(...SUPER_ROLES), building.delete);
 
   // ── Floor routes (nested under building) ─────────────────────────────────
   r.get('/:buildingId/floors',    floor.getByBuilding);
-  r.post('/:buildingId/floors',   authorize(...ADMIN_ROLES), floor.create);
+  r.post('/:buildingId/floors',   authorize(...ADMIN_ROLES), validate(createFloorSchema), floor.create);
 
   return r;
 };
@@ -37,7 +39,7 @@ export const createFloorRouter = (floor: FloorController): Router => {
   r.use(authenticate);
 
   r.get('/:id',    floor.getById);
-  r.put('/:id',    authorize(...[UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER]), floor.update);
+  r.put('/:id',    authorize(...[UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER]), validate(updateFloorSchema), floor.update);
   r.delete('/:id', authorize(...[UserRole.ADMIN, UserRole.SUPER_ADMIN]), floor.delete);
 
   return r;

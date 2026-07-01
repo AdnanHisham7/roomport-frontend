@@ -1,3 +1,4 @@
+import { logger } from '../../shared/logger/logger';
 import type { Request, Response } from 'express';
 import { PaymentRecordRepository } from '../../infrastructure/repository/payment-record-repository';
 import { TenantRepository } from '../../infrastructure/repository/tenant-repository';
@@ -130,7 +131,7 @@ export class PaymentRecordController {
         userId:      user.userId,
         description: `Rent payment of ₹${record.amount} recorded for tenant ${tenant.firstName} ${tenant.lastName} (${label}). Status: ${status}.`,
         metadata:    { tenantId, periodLabel: label, amount: record.amount, status, method },
-      }).catch(console.error);
+      }).catch(err => logger.error(String(err)));
 
       return res.status(201).json({ message: 'Payment recorded.', data: record });
     } catch (e) { return this.handleError(res, e, 'Failed to record payment.'); }
@@ -159,7 +160,7 @@ export class PaymentRecordController {
         userId:      user.userId,
         description: `Payment record for period "${existing.periodLabel}" updated.`,
         metadata:    { changes: req.body },
-      }).catch(console.error);
+      }).catch(err => logger.error(String(err)));
 
       return res.status(200).json({ message: 'Updated.', data: record });
     } catch (e) { return this.handleError(res, e, 'Failed to update payment record.'); }
@@ -187,7 +188,7 @@ export class PaymentRecordController {
         unitId:      existing.unitId,
         userId:      user.userId,
         description: `Payment record for period "${existing.periodLabel}" deleted.`,
-      }).catch(console.error);
+      }).catch(err => logger.error(String(err)));
 
       return res.status(200).json({ message: 'Deleted.' });
     } catch (e) { return this.handleError(res, e, 'Failed to delete payment record.'); }

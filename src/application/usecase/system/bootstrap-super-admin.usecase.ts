@@ -4,7 +4,6 @@ import { IUserRepository } from '../../../domain/repository/user-repository-impl
 import { BootstrapRequestDTO, BootstrapResponseDTO } from '../../dtos/bootstrap/bootstrap.dto';
 import { BadRequestError } from '../../../shared/error/app-error';
 
-
 const SALT_ROUNDS = 12;
 
 export class BootstrapSuperAdminUseCase implements IBootstrapUseCase {

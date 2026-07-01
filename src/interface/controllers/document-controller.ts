@@ -57,26 +57,11 @@ export class DocumentController {
 
   create = async (req: Request, res: Response): Promise<Response> => {
     try {
-      const { type, title, fileUrl, uploadedBy } = req.body;
-      if (!type || !title?.trim() || !fileUrl?.trim() || !uploadedBy?.trim()) {
-        return res.status(422).json({
-          message:    'Validation failed.',
-          suggestion: 'Provide type, title, fileUrl, and uploadedBy.',
-          errors:     [
-            !type          && 'type is required.',
-            !title?.trim() && 'title is required.',
-            !fileUrl?.trim() && 'fileUrl is required.',
-            !uploadedBy?.trim() && 'uploadedBy is required.',
-          ].filter(Boolean),
-        });
-      }
-
       const user = req.user!;
       const buildingId = req.body.buildingId;
       if (user.role !== 'super_admin' && buildingId) {
         await this.assertBuildingOwnership(buildingId, user.userId, user.role);
       }
-
       const doc = await this.documentUseCases.create({ ...req.body });
       return res.status(201).json({ message: 'Document uploaded successfully.', data: doc });
     } catch (err) { return this.handleError(res, err, 'Failed to upload document.'); }

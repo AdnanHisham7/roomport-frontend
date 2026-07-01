@@ -4,7 +4,6 @@ import { NotFoundError } from "../../../shared/error/app-error";
 import { CreateDocumentDTO, DocumentResponseDTO } from "../../dtos/document/document-dto";
 import { IDocumentUseCases } from "../../interface/document/document-usecase-impl";
 
-
 function toResponse(d: IDocument): DocumentResponseDTO {
   return {
     _id:              d._id!,

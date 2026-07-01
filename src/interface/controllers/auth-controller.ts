@@ -1,8 +1,12 @@
 import type { Request, Response } from 'express';
 import type { IAuthUseCases }    from '../../application/interface/common/auth-usecase.impl';
 import type { IRegisterUseCase } from '../../application/interface/common/register-usecase.impl';
-import { OtpPurpose }            from '../../shared/enums/OtpPurpose.enum';
 import { AppError } from '../../shared/error/app-error';
+import type {
+  registerSchema, loginSchema, refreshTokenSchema, sendOtpSchema,
+  validateOtpSchema, verifyEmailSchema, forgotPasswordSchema, resetPasswordSchema,
+} from '../validators/auth.validator';
+import type { z } from 'zod';
 
 export class AuthController {
   constructor(
@@ -10,51 +14,24 @@ export class AuthController {
     private readonly registerUseCase: IRegisterUseCase
   ) {}
 
-  // ─── POST /auth/register ──────────────────────────────────────────────────
-  register = async (req: Request, res: Response): Promise<Response> => {
+  register = async (req: Request<unknown, unknown, z.infer<typeof registerSchema>>, res: Response): Promise<Response> => {
     try {
-      const { email, password, first_name, last_name, phone_number } = req.body;
-
-      if (!email || !password || !first_name || !last_name) {
-        return res.status(400).json({
-          message:    'Registration failed: Missing required fields.',
-          suggestion: 'Please provide email, password, first_name, and last_name.',
-        });
-      }
-      if (password.length < 8) {
-        return res.status(400).json({
-          message:    'Registration failed: Password too short.',
-          suggestion: 'Password must be at least 8 characters.',
-        });
-      }
-
-      const result = await this.registerUseCase.register({
-        email, password, first_name, last_name, phone_number,
-      });
+      const result = await this.registerUseCase.register(req.body);
       return res.status(201).json(result);
     } catch (error) {
       return this.handleError(res, error, 'An error occurred during registration.');
     }
   };
 
-  // ─── POST /auth/login ─────────────────────────────────────────────────────
-  login = async (req: Request, res: Response): Promise<Response> => {
+  login = async (req: Request<unknown, unknown, z.infer<typeof loginSchema>>, res: Response): Promise<Response> => {
     try {
-      const { email, password } = req.body;
-      if (!email || !password) {
-        return res.status(400).json({
-          message:    'Login failed: Missing required fields.',
-          suggestion: 'Please provide both email and password.',
-        });
-      }
-      const result = await this.authUseCases.login({ email, password });
+      const result = await this.authUseCases.login(req.body);
       return res.status(200).json({ message: 'Login successful.', data: result });
     } catch (error) {
       return this.handleError(res, error, 'An error occurred during login.');
     }
   };
 
-  // ─── POST /auth/logout ────────────────────────────────────────────────────
   logout = async (req: Request, res: Response): Promise<Response> => {
     try {
       const userId = req.user?.userId;
@@ -71,114 +48,54 @@ export class AuthController {
     }
   };
 
-  // ─── POST /auth/refresh-token ─────────────────────────────────────────────
-  refreshToken = async (req: Request, res: Response): Promise<Response> => {
+  refreshToken = async (req: Request<unknown, unknown, z.infer<typeof refreshTokenSchema>>, res: Response): Promise<Response> => {
     try {
-      const { refreshToken } = req.body;
-      if (!refreshToken) {
-        return res.status(400).json({
-          message:    'Token refresh failed: No refresh token provided.',
-          suggestion: 'Please provide a valid refresh token.',
-        });
-      }
-      const result = await this.authUseCases.refreshToken({ refreshToken });
+      const result = await this.authUseCases.refreshToken(req.body);
       return res.status(200).json({ message: 'Token refreshed successfully.', data: result });
     } catch (error) {
       return this.handleError(res, error, 'An error occurred while refreshing the token.');
     }
   };
 
-  // ─── POST /auth/send-otp ──────────────────────────────────────────────────
-  sendOtp = async (req: Request, res: Response): Promise<Response> => {
+  sendOtp = async (req: Request<unknown, unknown, z.infer<typeof sendOtpSchema>>, res: Response): Promise<Response> => {
     try {
-      const { email, purpose } = req.body;
-      if (!email || !purpose) {
-        return res.status(400).json({
-          message:    'OTP send failed: Missing required fields.',
-          suggestion: 'Please provide email and purpose.',
-        });
-      }
-      if (!Object.values(OtpPurpose).includes(purpose)) {
-        return res.status(400).json({
-          message:    'OTP send failed: Invalid purpose.',
-          suggestion: `Purpose must be one of: ${Object.values(OtpPurpose).join(', ')}.`,
-        });
-      }
-      await this.authUseCases.sendOtp({ email, purpose });
-      return res.status(200).json({ message: `OTP sent successfully to ${email}.` });
+      await this.authUseCases.sendOtp(req.body);
+      return res.status(200).json({ message: `OTP sent successfully to ${req.body.email}.` });
     } catch (error) {
       return this.handleError(res, error, 'An error occurred while sending the OTP.');
     }
   };
 
-  // ─── POST /auth/resend-otp ────────────────────────────────────────────────
-  resendOtp = async (req: Request, res: Response): Promise<Response> => {
+  resendOtp = async (req: Request<unknown, unknown, z.infer<typeof sendOtpSchema>>, res: Response): Promise<Response> => {
     try {
-      const { email, purpose } = req.body;
-      if (!email || !purpose) {
-        return res.status(400).json({
-          message:    'OTP resend failed: Missing required fields.',
-          suggestion: 'Please provide email and purpose.',
-        });
-      }
-      if (!Object.values(OtpPurpose).includes(purpose)) {
-        return res.status(400).json({
-          message:    'OTP resend failed: Invalid purpose.',
-          suggestion: `Purpose must be one of: ${Object.values(OtpPurpose).join(', ')}.`,
-        });
-      }
-      await this.authUseCases.resendOtp({ email, purpose });
-      return res.status(200).json({ message: `OTP resent successfully to ${email}.` });
+      await this.authUseCases.resendOtp(req.body);
+      return res.status(200).json({ message: `OTP resent successfully to ${req.body.email}.` });
     } catch (error) {
       return this.handleError(res, error, 'An error occurred while resending the OTP.');
     }
   };
 
-  // ─── POST /auth/validate-otp ──────────────────────────────────────────────
-  validateOtp = async (req: Request, res: Response): Promise<Response> => {
+  validateOtp = async (req: Request<unknown, unknown, z.infer<typeof validateOtpSchema>>, res: Response): Promise<Response> => {
     try {
-      const { email, otp } = req.body;
-      if (!email || !otp) {
-        return res.status(400).json({
-          message:    'OTP validation failed: Missing required fields.',
-          suggestion: 'Please provide email and otp.',
-        });
-      }
-      const result = await this.authUseCases.validateOtp({ email, otp });
+      const result = await this.authUseCases.validateOtp(req.body);
       return res.status(200).json({ message: 'OTP validated successfully.', data: result });
     } catch (error) {
       return this.handleError(res, error, 'An error occurred while validating the OTP.');
     }
   };
 
-  // ─── POST /auth/verify-email ──────────────────────────────────────────────
-  verifyEmail = async (req: Request, res: Response): Promise<Response> => {
+  verifyEmail = async (req: Request<unknown, unknown, z.infer<typeof verifyEmailSchema>>, res: Response): Promise<Response> => {
     try {
-      const { email, otp } = req.body;
-      if (!email || !otp) {
-        return res.status(400).json({
-          message:    'Email verification failed: Missing required fields.',
-          suggestion: 'Please provide email and otp.',
-        });
-      }
-      await this.authUseCases.verifyEmail({ email, otp });
+      await this.authUseCases.verifyEmail(req.body);
       return res.status(200).json({ message: 'Email verified successfully. You can now login.' });
     } catch (error) {
       return this.handleError(res, error, 'An error occurred while verifying the email.');
     }
   };
 
-  // ─── POST /auth/forgot-password ───────────────────────────────────────────
-  forgotPassword = async (req: Request, res: Response): Promise<Response> => {
+  forgotPassword = async (req: Request<unknown, unknown, z.infer<typeof forgotPasswordSchema>>, res: Response): Promise<Response> => {
     try {
-      const { email } = req.body;
-      if (!email) {
-        return res.status(400).json({
-          message:    'Forgot password failed: Email is required.',
-          suggestion: 'Please provide your registered email address.',
-        });
-      }
-      await this.authUseCases.forgotPassword({ email });
+      await this.authUseCases.forgotPassword(req.body);
       return res.status(200).json({
         message: 'If an account exists with this email, an OTP has been sent.',
       });
@@ -187,23 +104,9 @@ export class AuthController {
     }
   };
 
-  // ─── POST /auth/reset-password ────────────────────────────────────────────
-  resetPassword = async (req: Request, res: Response): Promise<Response> => {
+  resetPassword = async (req: Request<unknown, unknown, z.infer<typeof resetPasswordSchema>>, res: Response): Promise<Response> => {
     try {
-      const { email, otp, newPassword } = req.body;
-      if (!email || !otp || !newPassword) {
-        return res.status(400).json({
-          message:    'Password reset failed: Missing required fields.',
-          suggestion: 'Please provide email, otp, and newPassword.',
-        });
-      }
-      if (newPassword.length < 8) {
-        return res.status(400).json({
-          message:    'Password reset failed: Password too short.',
-          suggestion: 'Password must be at least 8 characters long.',
-        });
-      }
-      await this.authUseCases.resetPassword({ email, otp, newPassword });
+      await this.authUseCases.resetPassword(req.body);
       return res.status(200).json({
         message: 'Password reset successfully. Please login with your new password.',
       });

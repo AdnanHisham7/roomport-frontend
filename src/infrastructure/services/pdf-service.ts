@@ -3,7 +3,6 @@ import fs          from 'fs';
 import path        from 'path';
 import { fileURLToPath } from 'url';
 
-
 export interface AgreementPdfData {
   agreementId:       string;
   title:             string;

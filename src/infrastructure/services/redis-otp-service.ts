@@ -1,3 +1,5 @@
+import { env } from '../config/env';
+import { logger } from '../../shared/logger/logger';
 import { Redis } from 'ioredis';
 import { IOtpService } from '../../application/interface/common/otp-servie-usecase.impl';
 
@@ -15,8 +17,8 @@ export class RedisOtpService implements IOtpService {
       retryStrategy: (times: number) => Math.min(times * 200, 3000),
     });   
 
-    this.client.on('connect', () => console.log('✅  Redis connected'));
-    this.client.on('error',   (err: Error) => console.error('❌  Redis error:', err.message));
+    this.client.on('connect', () => logger.info('✅  Redis connected'));
+    this.client.on('error',   (err: Error) => logger.error('❌  Redis error:', err.message));
   }
 
   private key(email: string, purpose: string): string {

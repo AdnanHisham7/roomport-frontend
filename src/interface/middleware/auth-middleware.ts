@@ -2,7 +2,6 @@ import type { Request, Response, NextFunction } from 'express';
 import { TokenPayload } from '../../application/interface/common/jwt-service-usecase.impl';
 import { JwtService } from '../../infrastructure/services/jwt-service';
 
-
 declare global {
   namespace Express {
     interface Request {
@@ -12,8 +11,6 @@ declare global {
 }
 
 const jwtService = new JwtService();
-
-// ─── Authenticate ─────────────────────────────────────────────────────────────
 export const authenticate = (req: Request, res: Response, next: NextFunction): void => {
   try {
     const authHeader = req.headers.authorization;
@@ -37,8 +34,6 @@ export const authenticate = (req: Request, res: Response, next: NextFunction): v
     });
   }
 };
-
-// ─── Authorize by role ────────────────────────────────────────────────────────
 export const authorize = (...allowedRoles: string[]) =>
   (req: Request, res: Response, next: NextFunction): void => {
     const role = req.user?.role;

@@ -1,3 +1,4 @@
+import { logger } from '../../../shared/logger/logger';
 import { IInquiryRepository } from "../../../domain/repository/inquiry-repository-impl";
 import { IBuildingRepository } from "../../../domain/repository/building-repository-impl";
 import { IUnitRepository } from "../../../domain/repository/unit-repository-impl";
@@ -67,7 +68,7 @@ export class InquiryUseCases implements IInquiryUseCases {
       notificationType: NotificationType.GENERAL,
       channel: NotificationChannel.EMAIL,
       buildingId: building._id,
-    }).catch(err => console.error('Failed to notify owner of new inquiry:', err));
+    }).catch(err => logger.error('Failed to notify owner of new inquiry:', err));
 
     return toResponse(inquiry);
   }

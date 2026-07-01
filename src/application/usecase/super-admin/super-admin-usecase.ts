@@ -1,3 +1,4 @@
+import { logger } from '../../../shared/logger/logger';
 import { IUserRepository } from '../../../domain/repository/user-repository-impl';
 import { IBuildingRepository } from '../../../domain/repository/building-repository-impl';
 import { ISubscriptionRepository } from '../../../domain/repository/subscription-repository-impl';
@@ -154,7 +155,7 @@ export class SuperAdminUseCases implements ISuperAdminUseCases {
     try {
       await this.emailService.sendWelcomeCredentials(data.email, `${data.firstName} ${data.lastName}`, tempPassword);
     } catch (e) {
-      console.error('Welcome email failed:', e);
+      logger.error('Welcome email failed:', e);
     }
 
     this.activityLogUc.logActivity({
@@ -164,7 +165,7 @@ export class SuperAdminUseCases implements ISuperAdminUseCases {
       userId:      adminUserId,
       description: `Builder ${data.firstName} ${data.lastName} (${data.email}) registered manually. Cycle: ${data.billingCycle}, Buildings: ${data.numberOfBuildings}, Units: ${data.numberOfUnits}.`,
       metadata:    { email: data.email, billingCycle: data.billingCycle, numberOfBuildings: data.numberOfBuildings, numberOfUnits: data.numberOfUnits },
-    }).catch(console.error);
+    }).catch(err => logger.error(String(err)));
 
     return { userId: user._id!, message: `Builder registered. Welcome email with login credentials sent to ${data.email}.` };
   }
@@ -245,7 +246,7 @@ export class SuperAdminUseCases implements ISuperAdminUseCases {
       userId:      id,
       description: `Builder ${user.first_name} ${user.last_name} status changed to ${status}.`,
       metadata:    { newStatus: status },
-    }).catch(console.error);
+    }).catch(err => logger.error(String(err)));
   }
 
   async deleteBuilder(id: string): Promise<void> {
@@ -274,7 +275,7 @@ export class SuperAdminUseCases implements ISuperAdminUseCases {
       entityId:    id,
       userId:      id,
       description: `Builder ${user.first_name} ${user.last_name} (${user.email}) account and all associated data deleted.`,
-    }).catch(console.error);
+    }).catch(err => logger.error(String(err)));
   }
 
   async listBuildings(filter: { search?: string; status?: string; isPublished?: boolean; isFeatured?: boolean }, page: number, limit: number) {
@@ -366,7 +367,7 @@ export class SuperAdminUseCases implements ISuperAdminUseCases {
       entityId:    id,
       userId:      adminUserId,
       description: `Subscription ${id} updated by admin. Buildings: ${data.numberOfBuildings ?? existing.numberOfBuildings}, Units: ${data.numberOfUnits ?? existing.numberOfUnits}.`,
-    }).catch(console.error);
+    }).catch(err => logger.error(String(err)));
 
     return toSubscriptionResponse(updated!);
   }

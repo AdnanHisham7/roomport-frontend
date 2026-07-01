@@ -36,6 +36,7 @@ export const createSuperAdminRouter = (controller: SuperAdminController): Router
 
   // Upgrade requests
   router.get('/upgrade-requests',              controller.listUpgradeRequests);
+  router.get('/upgrade-requests/:id/preview',  controller.previewUpgrade);
   router.post('/upgrade-requests/:id/resolve', controller.resolveUpgradeRequest);
 
   return router;
