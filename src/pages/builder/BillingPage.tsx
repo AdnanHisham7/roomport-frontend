@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
-import { Building2, DoorOpen, Send, IndianRupee, Clock, CheckCircle, AlertCircle } from 'lucide-react';
+import { Building2, DoorOpen, Send, Clock, CheckCircle, AlertCircle } from 'lucide-react';
 import { Button, Input } from '@/components/ui';
 import { Card } from '@/components/ui/Card';
 import { StatusPill } from '@/components/ui/Badge';
@@ -48,7 +48,7 @@ export default function BillingPage() {
   const [requestUpgrade, { isLoading: requesting }] = useRequestUpgradeMutation();
   const [upgradeSubmitted, setUpgradeSubmitted]       = useState(false);
 
-  const { register, handleSubmit, formState: { errors } } = useForm<UpgradeForm>({
+  const { register, handleSubmit } = useForm<UpgradeForm>({
     defaultValues: { additionalBuildings: 0, additionalUnits: 0 },
   });
 

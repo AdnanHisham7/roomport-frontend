@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import { Building2, DoorOpen, CheckCircle2, Phone, Mail, MessageSquare } from 'lucide-react';
-import { Button, Input, Textarea } from '@/components/ui';
+import { Button, Input } from '@/components/ui';
 import { Card } from '@/components/ui/Card';
 import { useGetPricingQuery, useBookDemoMutation } from '@/store/api/subscriptionApi';
 import { formatCurrency } from '@/utils/format';

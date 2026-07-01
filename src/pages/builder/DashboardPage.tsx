@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { IndianRupee, Home, TrendingUp, Users, ArrowUpRight, Clock, FileWarning, X, AlertCircle } from 'lucide-react';
+import { IndianRupee, Home, TrendingUp, ArrowUpRight, Clock, FileWarning, X, AlertCircle } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell } from 'recharts';
 import { Card } from '@/components/ui/Card';
 import { PageLoader } from '@/components/ui/Avatar';

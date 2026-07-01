@@ -1,8 +1,7 @@
-import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
-import { ChevronLeft, BedDouble, Bath, DollarSign, Send, MapPin } from 'lucide-react';
+import { ChevronLeft, BedDouble, Bath, Send, MapPin } from 'lucide-react';
 import { Button, Input, Textarea } from '@/components/ui';
 import { Card } from '@/components/ui/Card';
 import { StatusPill } from '@/components/ui/Badge';

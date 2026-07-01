@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import { FileSignature, PenLine, ShieldCheck, Download, CheckCircle } from 'lucide-react';
 import { Button, Input } from '@/components/ui';
 import { Card } from '@/components/ui/Card';
-import { PageLoader, Spinner } from '@/components/ui/Avatar';
+import { Spinner } from '@/components/ui/Avatar';
 import { useViewAgreementByTokenQuery, useInitiateSigningMutation, useVerifySigningOtpMutation } from '@/store/api/agreementApi';
 import { formatCurrency, formatDate } from '@/utils/format';
 

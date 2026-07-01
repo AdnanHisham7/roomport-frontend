@@ -3,7 +3,6 @@ import { motion } from 'framer-motion';
 import { AlertTriangle, Phone, Mail, CreditCard, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui';
 import { useAuth } from '@/hooks/useAuth';
-import { useLogoutMutation } from '@/store/api/authApi';
 import { useGetMySubscriptionQuery, useGetMyPeriodsQuery } from '@/store/api/subscriptionApi';
 
 function StatusBadge({ status }: { status: string }) {

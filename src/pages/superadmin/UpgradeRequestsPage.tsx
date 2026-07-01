@@ -16,12 +16,11 @@ import {
   useGetUpgradeRequestsQuery,
   useResolveUpgradeRequestMutation,
   useGetBuilderDetailQuery,
+  usePreviewUpgradeRequestQuery,
   type UpgradeRequest,
 } from '@/store/api/superAdminApi';
-import { useGetPlatformSettingsQuery } from '@/store/api/superAdminApi';
 import { timeAgo, formatDate, formatCurrency } from '@/utils/format';
 import { cn } from '@/utils/cn';
-import type { PlatformSetting } from '@/types/platform';
 
 const STATUS_STYLES: Record<string, string> = {
   pending:   'bg-amber-50 text-amber-700 border-amber-200',
@@ -42,35 +41,6 @@ function getBuilderInfo(req: UpgradeRequest) {
   return { _id: req.userId as string, name: 'Unknown builder', email: '', phone: '' };
 }
 
-function computeFullAmount(
-  buildings: number,
-  units: number,
-  cycle: string,
-  pricing: PlatformSetting
-): number {
-  if (cycle === 'yearly') {
-    return buildings * (pricing.yearlyPricePerBuilding ?? pricing.pricePerBuilding) +
-           units     * (pricing.yearlyPricePerUnit     ?? pricing.pricePerUnit);
-  }
-  return buildings * (pricing.monthlyPricePerBuilding ?? pricing.pricePerBuilding) +
-         units     * (pricing.monthlyPricePerUnit     ?? pricing.pricePerUnit);
-}
-
-function computeProRatedAmount(
-  deltaBuildings: number,
-  deltaUnits:     number,
-  cycle:          string,
-  pricing:        PlatformSetting,
-  today:          Date,
-  periodEnd:      Date
-): number {
-  const fullDelta = computeFullAmount(deltaBuildings, deltaUnits, cycle, pricing);
-  const totalDays = cycle === 'yearly' ? 365 : 30;
-  const msInDay   = 1000 * 60 * 60 * 24;
-  const remaining = Math.max(1, Math.round((periodEnd.getTime() - today.getTime()) / msInDay));
-  return Math.round(fullDelta * (remaining / totalDays));
-}
-
 interface ResolveModalProps {
   request: UpgradeRequest;
   onClose: () => void;
@@ -80,13 +50,9 @@ interface ResolveModalProps {
 function ResolveModal({ request, onClose, onDone }: ResolveModalProps) {
   const builder = getBuilderInfo(request);
 
-  const { data: settingsData } = useGetPlatformSettingsQuery();
   const { data: builderData }  = useGetBuilderDetailQuery(builder._id, { skip: !builder._id });
 
-  const pricing   = settingsData?.data;
   const sub       = builderData?.data?.subscription;
-  const billingCycle = sub?.billingCycle ?? 'monthly';
-
   const existingBuildings = sub?.numberOfBuildings ?? 0;
   const existingUnits     = sub?.numberOfUnits     ?? 0;
   const addBuildings      = request.additionalBuildings ?? 0;
@@ -107,25 +73,27 @@ function ResolveModal({ request, onClose, onDone }: ResolveModalProps) {
     }
   }, [sub, addBuildings, addUnits]);
 
-  // ── Amount calculations ──────────────────────────────────────────────────
-  const newFullAmount = pricing
-    ? computeFullAmount(newTotalBuildings, newTotalUnits, billingCycle, pricing)
-    : null;
+  // Debounce the totals so the preview isn't re-fetched on every keystroke.
+  const [debouncedBuildings, setDebouncedBuildings] = useState(newTotalBuildings);
+  const [debouncedUnits, setDebouncedUnits]         = useState(newTotalUnits);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedBuildings(newTotalBuildings);
+      setDebouncedUnits(newTotalUnits);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [newTotalBuildings, newTotalUnits]);
 
-  const deltaBuildings = Math.max(0, newTotalBuildings - existingBuildings);
-  const deltaUnits     = Math.max(0, newTotalUnits     - existingUnits);
-
-  // Find the currently active paid period (covers today)
-  const today          = new Date();
-  const activePeriod   = sub?.periods?.find(p =>
-    p.status === 'paid' &&
-    new Date(p.periodStart) <= today &&
-    new Date(p.periodEnd)   >= today
+  // Pricing is computed server-side so the preview always matches what resolving will actually charge.
+  const { data: previewData } = usePreviewUpgradeRequestQuery(
+    { id: request._id, newTotalBuildings: debouncedBuildings, newTotalUnits: debouncedUnits },
+    { skip: action !== 'approved' || debouncedBuildings < 1 || debouncedUnits < 1 }
   );
 
-  const deltaAmount = (pricing && activePeriod && (deltaBuildings > 0 || deltaUnits > 0))
-    ? computeProRatedAmount(deltaBuildings, deltaUnits, billingCycle, pricing, today, new Date(activePeriod.periodEnd))
-    : null;
+  const newFullAmount = previewData?.data.newFullAmount ?? null;
+  const deltaAmount   = previewData?.data.deltaAmount ?? null;
+  const deltaBuildings = Math.max(0, newTotalBuildings - existingBuildings);
+  const deltaUnits     = Math.max(0, newTotalUnits - existingUnits);
 
   const handleSubmit = async () => {
     if (!action) return;
@@ -280,7 +248,7 @@ function ResolveModal({ request, onClose, onDone }: ResolveModalProps) {
             </div>
 
             {/* Auto-computed amount breakdown */}
-            {pricing && newFullAmount !== null && (
+            {newFullAmount !== null && (
               <div className="rounded-xl border border-line bg-white divide-y divide-line/60">
                 {/* New full-period amount */}
                 <div className="flex items-center justify-between px-4 py-3">
@@ -288,14 +256,14 @@ function ResolveModal({ request, onClose, onDone }: ResolveModalProps) {
                     <IndianRupee className="size-4 text-sage-500" />
                     <span>New full period amount</span>
                     <span className="rounded-full bg-paper-dim px-2 py-0.5 text-[10px] text-ink-faint capitalize">
-                      {billingCycle}
+                      {sub?.billingCycle ?? 'monthly'}
                     </span>
                   </div>
                   <span className="font-semibold text-ink">{formatCurrency(newFullAmount)}</span>
                 </div>
 
-                {/* Delta top-up (if active paid period exists and there's a delta) */}
-                {activePeriod && (deltaBuildings > 0 || deltaUnits > 0) && deltaAmount !== null && (
+                {/* Delta top-up (returned only when an active paid period exists and totals increased) */}
+                {deltaAmount !== null && (
                   <div className="px-4 py-3 bg-amber-50/50">
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-start gap-2 text-sm">
@@ -303,7 +271,7 @@ function ResolveModal({ request, onClose, onDone }: ResolveModalProps) {
                         <div>
                           <p className="font-medium text-amber-700">Pro-rated top-up for current period</p>
                           <p className="text-xs text-amber-600 mt-0.5">
-                            Today → {formatDate(activePeriod.periodEnd)}
+                            {previewData?.data.deltaLabel}
                             {' · '}+{deltaBuildings} buildings, +{deltaUnits} units
                           </p>
                         </div>
@@ -312,13 +280,13 @@ function ResolveModal({ request, onClose, onDone }: ResolveModalProps) {
                     </div>
                     <div className="mt-2 flex items-start gap-1.5 text-[11px] text-amber-600">
                       <Info className="mt-0.5 size-3 shrink-0" />
-                      Builder already paid for {existingBuildings} bldg + {existingUnits} units until {formatDate(activePeriod.periodEnd)}. Only the delta ({deltaBuildings} bldg + {deltaUnits} units) is charged for the remaining days.
+                      Builder already paid for {existingBuildings} bldg + {existingUnits} units for the current period. Only the delta ({deltaBuildings} bldg + {deltaUnits} units) is charged for the remaining days.
                     </div>
                   </div>
                 )}
 
-                {/* No current paid period */}
-                {!activePeriod && (
+                {/* No current paid period — totals increased but nothing to pro-rate against */}
+                {deltaAmount === null && (deltaBuildings > 0 || deltaUnits > 0) && (
                   <div className="px-4 py-3 bg-blue-50/40">
                     <div className="flex items-start gap-2 text-xs text-blue-700">
                       <Info className="mt-0.5 size-3.5 shrink-0" />
@@ -336,9 +304,9 @@ function ResolveModal({ request, onClose, onDone }: ResolveModalProps) {
               </div>
             )}
 
-            {!pricing && (
+            {newFullAmount === null && action === 'approved' && (
               <div className="rounded-xl border border-line bg-paper-dim px-4 py-3 text-xs text-ink-faint">
-                Loading pricing configuration…
+                Calculating pricing…
               </div>
             )}
           </motion.div>
@@ -375,7 +343,7 @@ function ResolveModal({ request, onClose, onDone }: ResolveModalProps) {
           <Button
             className="flex-1"
             onClick={handleSubmit}
-            disabled={!action || isLoading || (action === 'approved' && !pricing)}
+            disabled={!action || isLoading || (action === 'approved' && newFullAmount === null)}
           >
             {isLoading
               ? 'Saving…'

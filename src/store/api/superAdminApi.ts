@@ -44,6 +44,12 @@ export interface ResolveUpgradeRequestResponse {
   periods?:       SubscriptionPeriod[];
 }
 
+export interface PreviewUpgradeResponse {
+  newFullAmount: number;
+  deltaAmount?:  number;
+  deltaLabel?:   string;
+}
+
 export const superAdminApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getPlatformStats: builder.query<{ data: PlatformStats }, void>({
@@ -132,6 +138,9 @@ export const superAdminApi = baseApi.injectEndpoints({
       query: (params) => ({ url: '/super-admin/upgrade-requests', params: params ?? undefined }),
       providesTags: ['UpgradeRequests'],
     }),
+    previewUpgradeRequest: builder.query<{ data: PreviewUpgradeResponse }, { id: string; newTotalBuildings: number; newTotalUnits: number }>({
+      query: ({ id, ...params }) => ({ url: `/super-admin/upgrade-requests/${id}/preview`, params }),
+    }),
     resolveUpgradeRequest: builder.mutation<ResolveUpgradeRequestResponse, ResolveUpgradeRequestInput>({
       query: ({ id, ...body }) => ({ url: `/super-admin/upgrade-requests/${id}/resolve`, method: 'POST', body }),
       invalidatesTags: ['UpgradeRequests', 'Subscription', 'Notification'],
@@ -159,6 +168,7 @@ export const {
   useMarkPeriodPaidMutation,
   useGetDemoRequestsQuery,
   useUpdateDemoRequestMutation,
+  usePreviewUpgradeRequestQuery,
   useGetUpgradeRequestsQuery,
   useResolveUpgradeRequestMutation,
 } = superAdminApi;

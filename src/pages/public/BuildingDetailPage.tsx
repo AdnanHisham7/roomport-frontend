@@ -16,8 +16,7 @@ import type { Unit } from '@/types/building';
 // ── Image slider with auto-advance + dot navigation ──────────────────────────
 function ImageSlider({ images, alt }: { images: string[]; alt: string }) {
   const [idx, setIdx] = useState(0);
-  const [roomImgIdx, setRoomImgIdx] = useState(0);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     if (images.length <= 1) return;

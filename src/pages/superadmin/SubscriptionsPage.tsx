@@ -3,7 +3,7 @@ import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   CreditCard, ChevronDown, ChevronUp, CheckCircle2,
-  Pencil, Check, IndianRupee, Calendar, RefreshCw, X,
+  Pencil, Check, IndianRupee, RefreshCw, X,
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { StatusPill } from '@/components/ui/Badge';
@@ -32,8 +32,7 @@ const periodBadge: Record<string, string> = {
 // ── Single Period Row ─────────────────────────────────────────────────────────
 function PeriodRow({
   period,
-  subscriptionId,
-}: {
+  }: {
   period:         SubscriptionPeriod;
   subscriptionId: string;
 }) {

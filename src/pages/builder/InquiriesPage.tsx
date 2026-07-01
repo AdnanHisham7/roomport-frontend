@@ -9,7 +9,6 @@ import { SkeletonRow } from '@/components/ui/Skeleton';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { AssignTenantFromInquiryModal } from '@/components/tenant/AssignTenantFromInquiryModal';
 import { useGetInquiriesQuery, useUpdateInquiryStatusMutation, useDeleteInquiryMutation } from '@/store/api/inquiryApi';
-import { useGetUnitsQuery } from '@/store/api/unitApi';
 import { useGetBuildingsQuery } from '@/store/api/buildingApi';
 import { timeAgo } from '@/utils/format';
 import type { Inquiry, InquiryStatus } from '@/types/platform';

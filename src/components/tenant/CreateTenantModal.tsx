@@ -6,7 +6,6 @@ import { Button, Input, Select, Textarea } from '@/components/ui';
 import { useCreateTenantMutation } from '@/store/api/tenantApi';
 import { useGetBuildingsQuery } from '@/store/api/buildingApi';
 import { useGetUnitsQuery } from '@/store/api/unitApi';
-import { useState } from 'react';
 
 const rentTypeOptions = [
   { value: 'monthly', label: 'Monthly' },
