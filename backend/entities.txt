@@ -1,0 +1,357 @@
+﻿export enum ActivityLogAction {
+  USER_LOGIN = 'user_login',
+  USER_LOGOUT = 'user_logout',
+  TENANT_CREATED = 'tenant_created',
+  TENANT_UPDATED = 'tenant_updated',
+  TENANT_DELETED = 'tenant_deleted',
+  BUILDING_CREATED = 'building_created',
+  BUILDING_UPDATED = 'building_updated',
+  BUILDING_DELETED = 'building_deleted',
+  LEASE_CREATED = 'lease_created',
+  LEASE_TERMINATED = 'lease_terminated',
+  RENT_PAYMENT_CREATED = 'rent_payment_created',
+  RENT_PAYMENT_COMPLETED = 'rent_payment_completed',
+  DOCUMENT_UPLOADED = 'document_uploaded',
+  DOCUMENT_DELETED = 'document_deleted',
+  SUBSCRIPTION_CREATED = 'subscription_created',
+  SUBSCRIPTION_UPGRADED = 'subscription_upgraded',
+  SUBSCRIPTION_CANCELED = 'subscription_canceled',
+}
+
+export enum ActivityLogEntityType {
+  TENANT = 'tenant',
+  LEASE = 'lease',
+  PAYMENT = 'payment',
+  BUILDING = 'building',
+  USER = 'user',
+  DOCUMENT = 'document',
+  SUBSCRIPTION = 'subscription',
+}
+
+export interface IActivityLog {
+  _id?: string;
+  action: ActivityLogAction;
+  entityType?: ActivityLogEntityType;
+  buildingId?: string;
+  entityId?: string;
+  unitId?: string;
+  ipAddress?: string;
+  metadata?: Record<string, any>;
+  userAgent?: string;
+  userId: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+export type AgreementStatus =
+  | 'draft'       
+  | 'sent'        
+  | 'viewed'      
+  | 'otp_sent'    
+  | 'verified'    
+  | 'completed'   
+  | 'expired'     
+  | 'cancelled';  
+
+export interface IAgreementAudit {
+  sentAt?:       Date;
+  viewedAt?:     Date;
+  signedAt?:     Date;   
+  verifiedAt?:   Date;   
+  completedAt?:  Date;   
+  signerIp?:     string;
+  signerUserAgent?: string;
+}
+
+export interface IAgreement {
+  _id?:                string;
+  // â”€â”€ parties â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  tenantId:            string;
+  buildingId:          string;   // ref to Building
+  unitId?:             string;
+  createdBy:           string;   // admin userId
+  // â”€â”€ content â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  title:               string;
+  body:                string;   // rich text / HTML body of the agreement
+  terms?:              string;   // summary of key terms
+  monthlyRent:         number;
+  startDate:           Date;
+  endDate:             Date;
+  // â”€â”€ workflow state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  status:              AgreementStatus;
+  // â”€â”€ signing token (hashed in DB) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  signingTokenHash?:   string;
+  tokenExpiresAt?:     Date;
+  // â”€â”€ OTP (hashed in DB) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  otpHash?:            string;
+  otpExpiresAt?:       Date;
+  // â”€â”€ signature capture â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  typedSignatureName?: string;   // tenant's full legal name typed at signing
+  // â”€â”€ audit trail â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  audit:               IAgreementAudit;
+  // â”€â”€ outcome â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  finalPdfUrl?:        string;   // URL after PDF is generated
+  documentId?:         string;   // ref to Document collection
+  // â”€â”€ timestamps â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  createdAt?:          Date;
+  updatedAt?:          Date;
+}
+export type BuildingType   = 'residential' | 'commercial' | 'mixed' | 'industrial';
+export type BuildingStatus = 'active' | 'inactive' | 'under_maintenance' | 'archived';
+
+export interface IBuildingLocation {
+  address:   string;
+  city:      string;
+  state:     string;
+  pincode:   string;
+  landmark?: string;
+  country:   string;
+}
+
+export interface IBuilding {
+  _id?:             string;
+  name:             string;
+  type:             BuildingType;
+  status:           BuildingStatus;
+  location:         IBuildingLocation;   // embedded â€” replaces addressId
+  ownerId:          string;
+  managerId?:       string;
+  totalUnits:       number;
+  totalFloors:      number;
+  sqft?:            number;
+  lift:             boolean;
+  helipad:          boolean;
+  nearAirport?:     string;
+  nearRailwayStation?: string;
+  nearBusStand?:    string;
+  nearPark?:        string;
+  amenities?:       string[];
+  images?:          string[];
+  documents?:       string[];
+  description?:     string;
+  yearOfBuild?:     string;
+  createdAt?:       Date;
+  updatedAt?:       Date;
+}
+
+export interface ICompanyAddress {
+  city:        string;
+  country:     string;
+  line1:       string;
+  line2?:      string;
+  postalCode:  string;
+  state:       string;
+}
+
+export interface ICompanyContact {
+  email:    string;  
+  phone:    string;
+  website?: string;
+}
+
+export interface ICompanyLegal {
+  CIN?:      string;  
+  GSTIN?:    string;  
+  legalName: string;  
+}
+
+export interface ICompanyBranding {
+  brandColor?: string;
+  logoUrl?:    string;
+}
+
+export type IndustryType =
+  | 'Residential'
+  | 'Commercial'
+  | 'Infrastructure'
+  | 'Industrial'
+  | 'Mixed';
+
+export interface ICompany {
+  _id?:         string;
+  name:         string;
+  address:      ICompanyAddress;
+  contact:      ICompanyContact;
+  companySize?: string;  
+  legal:        ICompanyLegal;
+  branding?:    ICompanyBranding;
+  industryType: IndustryType;
+  isActive:     boolean;  
+  createdAt?:   Date;
+  updatedAt?:   Date;
+}
+export type DocumentType =
+  | 'rental_agreement'
+  | 'building_license'
+  | 'insurance'
+  | 'lease_document'
+  | 'tenant_id'
+  | 'maintenance_invoice'
+  | 'police_verification'
+  | 'noc'
+  | 'tax_document'
+  | 'other';
+
+export interface IDocument {
+  _id?:              string;
+  unitId?:           string;         
+  buildingId?:       string;        
+  tenantId?:         string;         
+  leaseId?:          string;        
+  type:              DocumentType;
+  title:             string;
+  description?:      string;
+  fileSize?:         number;         
+  fileUrl:           string;         
+  expiryDate?:       Date;
+  uploadedBy:        string;        
+  documentVersions?: string[];       
+  createdAt?:        Date;
+  updatedAt?:        Date;
+}
+export type FloorStatus = 'active' | 'inactive' | 'under_maintenance';
+
+export interface IFloor {
+  _id?:         string;
+  buildingId:   string;        // ObjectId â†’ Building
+  floorNumber:  number;        // 0 = Ground, 1 = First, -1 = Basement
+  name:         string;        // e.g. "Ground Floor", "First Floor", "Basement 1"
+  totalUnits:   number;        // total units on this floor
+  status:       FloorStatus;
+  description?: string;
+  createdAt?:   Date;
+  updatedAt?:   Date;
+}
+export enum NotificationType {
+  RENT_REMINDER = 'rent_reminder',
+  PAYMENT_RECEIVED = 'payment_recieved',
+  PAYMENT_OVERDUE = 'payment_overdue',
+  LEASE_EXPIRY = 'lease_expiry',
+  MAINTENANCE_UPDATE = 'maintenance_update',
+  MAINTENANCE_ASSIGNED = 'maintenance_assigned',
+  DOCUMENT_EXPIRY = 'document_expiory',
+  GENERAL = 'general'
+}
+
+export enum NotificationChannel {
+  IN_APP = 'in_app',
+  SMS = 'sms',
+  WHATSAPP = 'whatsapp',
+  EMAIL = 'email'
+}
+
+export class Notification {
+  constructor(
+    public readonly _id: string,
+    public readonly userId: string,
+    public readonly title: string,
+    public readonly message: string,
+    public readonly notificationType: NotificationType,
+    public readonly channel: NotificationChannel,
+    public readonly isRead: boolean,
+    public readonly buildingId?: string,
+    public readonly tenantId?: string,
+    public readonly readAt?: Date,
+    public readonly createdAt?: Date,
+    public readonly updatedAt?: Date
+  ) {}
+}
+
+export type ICreateNotification = Omit<Notification, '_id' | 'createdAt' | 'updatedAt' | 'isRead' | 'readAt'>;
+export interface IRole {
+  _id?:         string;
+  name:         string; 
+  description:  string;
+  isSystemRole: boolean;
+  createdAt?:   Date;
+  updatedAt?:   Date;
+}
+export interface ISubscription {
+  _id?: any;
+  userId: any;
+  amount: number;
+  numberOfBuildings: number;
+  numberOfUnits: number;
+  dueDate: Date;
+  paidAt?: Date;
+  status: string;
+  paymentMethod?: string;
+  stripeChargeId?: string;
+  invoicenumber?: string;
+  stripePaymentId?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+export type TenantStatus = 'active' | 'inactive' | 'blacklisted' | 'pending';
+export type RentType     = 'monthly' | 'quarterly' | 'half_yearly' | 'yearly' | 'custom';
+
+export interface IEmergencyContact {
+  name:         string;
+  phone:        string;
+  relationship: string;
+}
+
+export interface ITenant {
+  _id?:              string;
+  firstName:         string;
+  lastName:          string;
+  email:             string;
+  phone:             string;
+  document?:         string[];       // array of Document ObjectIds
+  addressId?:        string;         // ObjectId ref to Address
+  status:            TenantStatus;
+  unitId?:           string;         // current unit ObjectId
+  buildingId?:       string;         // current building ObjectId
+  userId?:           string;         // linked user account (optional)
+  notes?:            string;
+  job?:              string;
+  emergencyContact?: IEmergencyContact;
+  rentType:          RentType;
+  rentAmount:        number;
+  dueDate:           number;         // day of month e.g. 5
+  paidAt?:           Date;
+  vacateDate?:       Date;
+  moveInDate?:       Date;
+  renewedFromTenantId?: string;
+  terms?:            string;
+  createdAt?:        Date;
+  updatedAt?:        Date;
+}
+export type UnitStatus = 'available' | 'occupied' | 'under maintenance' | 'reserved';
+
+export interface IUnit {
+  _id?: string;
+  unitNumber: string;
+  floorNumber: string;
+  buildingId: string;
+  rentAmount: number;
+  isOccupied: boolean;
+  amenities?: string[];
+  bedrooms: number;
+  bathrooms: number;
+  status: UnitStatus;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+export type UserRole   = 'super_admin' | 'admin' | 'manager';
+export type UserStatus = 'active' | 'inactive' | 'suspended' | 'pending_verification';
+
+export interface IUser {
+  _id?:            string;
+  email:           string;
+  first_name:      string;
+  last_name:       string;
+  phone_number?:   string;
+  password:        string;
+  status:          UserStatus;   
+  role:            UserRole;     
+  building_id?:    string;       
+  profile_image?:  string;
+  lastLoginAt?:    Date;
+  refresh_token?:  string | null;
+  phone_verified:  boolean;
+  email_verified:  boolean;
+  paymentStatus:   boolean;
+  subscriptionId?: string;       
+  createdAt?:      Date;
+  updatedAt?:      Date;
+}
